@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>MarNet WiFi — Operator console</title>
+<style>
+  :root{
+    --ink:#16233D;
+    --paper:#F6F5F1;
+    --panel:#FFFFFF;
+    --line:#DEDBD2;
+    --accent:#E2A33B;
+    --accent-deep:#B87F1E;
+    --good:#2F8F5B;
+    --good-bg:#EAF6EF;
+    --bad:#C0432F;
+    --bad-bg:#FBEAE6;
+    --warn:#B87F1E;
+    --warn-bg:#FBF3E3;
+    --muted:#6B7280;
+    --side-bg:#16233D;
+    --side-ink:#F2EFE7;
+    --side-muted:#8D9AB4;
+    --side-active:#22304C;
+    --radius:10px;
+    color-scheme: light;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --ink:#ECE9E0;
+      --paper:#0E1420;
+      --panel:#161D2C;
+      --line:#2A3245;
+      --muted:#98A2B8;
+      --good-bg:#12291F;
+      --bad-bg:#2E1815;
+      --warn-bg:#2B2210;
+      --side-bg:#0B1220;
+      --side-active:#1B2438;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#ECE9E0;
+    --paper:#0E1420;
+    --panel:#161D2C;
+    --line:#2A3245;
+    --muted:#98A2B8;
+    --good-bg:#12291F;
+    --bad-bg:#2E1815;
+    --warn-bg:#2B2210;
+    --side-bg:#0B1220;
+    --side-active:#1B2438;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  a{color:inherit;}
+  button{font-family:inherit;}
+  ::selection{background:var(--accent); color:var(--ink);}
+
+  /* ================= shared bits ================= */
+  .bars{display:flex; align-items:flex-end; gap:3px; height:20px; flex-shrink:0;}
+  .bars i{display:block; width:5px; background:var(--accent); border-radius:1px;}
+  .bars i:nth-child(1){height:6px;}
+  .bars i:nth-child(2){height:11px;}
+  .bars i:nth-child(3){height:16px;}
+  .bars i:nth-child(4){height:20px;}
+  .icon{width:18px; height:18px; flex-shrink:0;}
+  .icon svg{width:100%; height:100%; display:block;}
+
+  .btn{
+    font-family:inherit; font-weight:700; font-size:13.5px; border-radius:8px;
+    padding:9px 14px; cursor:pointer; white-space:nowrap; border:1.5px solid transparent;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-solid{background:var(--ink); color:var(--panel); border-color:var(--ink);}
+  .btn-solid:hover{background:var(--accent-deep); border-color:var(--accent-deep); color:#fff;}
+  .btn-ghost{background:transparent; color:var(--ink); border-color:var(--line);}
+  .btn-ghost:hover{border-color:var(--ink);}
+  .btn-danger{background:transparent; color:var(--bad); border-color:var(--bad-bg);}
+  .btn-danger:hover{background:var(--bad-bg);}
+  .btn-sm{padding:6px 10px; font-size:12.5px; border-radius:7px;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+
+  .pill{
+    display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700;
+    padding:3px 9px; border-radius:999px; text-transform:capitalize;
+  }
+  .pill.active{background:var(--good-bg); color:var(--good);}
+  .pill.expired{background:var(--line); color:var(--muted);}
+  .pill.unused{background:#EFEAF9; color:#6B4FBB;}
+  .pill.blocked{background:var(--bad-bg); color:var(--bad);}
+  .pill.pending{background:var(--warn-bg); color:var(--warn);}
+  .pill.confirmed{background:var(--good-bg); color:var(--good);}
+  .pill.failed{background:var(--bad-bg); color:var(--bad);}
+
+  .dot{width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:6px;}
+  .dot.good{background:var(--good);}
+  .dot.bad{background:var(--bad);}
+  .dot.warn{background:var(--warn);}
+
+  code, .mono{font-variant-numeric:tabular-nums; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+
+  /* ================= sign-in screen ================= */
+  .signin-screen{
+    min-height:100vh; display:flex; align-items:flex-start; justify-content:center;
+    padding:64px 20px;
+  }
+  .signin-wrap{width:100%; max-width:384px;}
+  .brand-row{display:flex; align-items:center; gap:12px; margin-bottom:26px;}
+  .brand-row .word b{display:block; font-size:19px; font-weight:800; letter-spacing:-.01em;}
+  .brand-row .word span{display:block; font-size:12.5px; color:var(--muted); margin-top:1px;}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:22px 22px 24px;
+  }
+  .card h1{font-size:19px; margin:0 0 6px;}
+  .card p.lead{font-size:13.5px; color:var(--muted); margin:0 0 20px; line-height:1.45;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12.5px; font-weight:700; margin-bottom:6px;}
+  .field .input-wrap{position:relative;}
+  .field input{
+    width:100%; border:1.5px solid var(--line); border-radius:8px; padding:11px 12px;
+    font-size:15px; font-family:inherit; background:var(--panel); color:var(--ink);
+  }
+  .field input:focus{outline:none; border-color:var(--ink);}
+  .field .eye{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; display:flex;
+  }
+  .field-msg{font-size:12.5px; margin:8px 0 0; min-height:1px;}
+  .field-msg.bad{color:var(--bad);}
+  .lock-box{
+    display:flex; gap:10px; background:var(--bad-bg); border-radius:8px; padding:12px 14px;
+    margin:2px 0 16px; font-size:12.5px; color:var(--bad); line-height:1.45;
+  }
+  .hint-box{
+    border:1px dashed var(--line); border-radius:12px; padding:16px 18px; margin-top:16px; font-size:12.5px;
+  }
+  .hint-box b{display:block; font-size:13px; margin-bottom:6px;}
+  .hint-box .creds{font-weight:700; margin-bottom:6px;}
+  .hint-box .note{color:var(--muted); line-height:1.45;}
+  .back-link{
+    display:block; text-align:center; margin-top:18px; font-size:13px; font-weight:700;
+    color:var(--accent-deep); text-decoration:none;
+  }
+
+  /* ================= app shell ================= */
+  .app-shell{display:flex; min-height:100vh;}
+  .sidebar{
+    width:232px; flex-shrink:0; background:var(--side-bg); color:var(--side-ink);
+    display:flex; flex-direction:column; position:fixed; top:0; bottom:0; left:0;
+    transition:transform .2s ease; z-index:40;
+  }
+  .sidebar .brand{padding:22px 20px 18px; display:flex; gap:10px; align-items:center; border-bottom:1px solid rgba(255,255,255,.08);}
+  .sidebar .brand b{display:block; font-size:16px; font-weight:800;}
+  .sidebar .brand span{display:block; font-size:11.5px; color:var(--side-muted);}
+  .sidebar nav{flex:1; padding:14px 10px; overflow-y:auto;}
+  .navlink{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px;
+    color:var(--side-muted); font-size:14px; font-weight:600; cursor:pointer; margin-bottom:2px;
+    text-decoration:none; border:none; background:none; width:100%; text-align:left;
+  }
+  .navlink .icon svg{stroke:currentColor;}
+  .navlink:hover{color:var(--side-ink);}
+  .navlink.active{background:var(--side-active); color:var(--side-ink);}
+  .sidebar .foot{padding:14px 20px 18px; border-top:1px solid rgba(255,255,255,.08); font-size:12px; color:var(--side-muted);}
+  .sidebar .foot button{background:none; border:none; color:var(--side-muted); font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; padding:0;}
+  .sidebar .foot button:hover{color:var(--side-ink);}
+
+  .sidebar-overlay{display:none; position:fixed; inset:0; background:rgba(10,14,24,.45); z-index:35;}
+  .sidebar-overlay.open{display:block;}
+
+  .content{flex:1; margin-left:232px; min-width:0; padding:26px 28px 60px;}
+  .topbar{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap;}
+  .topbar .titles{display:flex; align-items:flex-start; gap:12px;}
+  .hamburger{display:none; background:none; border:1px solid var(--line); border-radius:8px; padding:8px; cursor:pointer; color:var(--ink); flex-shrink:0;}
+  .eyebrow{font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.02em; margin:0 0 4px;}
+  .topbar h1{font-size:23px; margin:0; letter-spacing:-.01em;}
+  .topbar .actions{display:flex; gap:8px; flex-wrap:wrap;}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* stat cards */
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;}
+  .stat-card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 16px 14px;}
+  .stat-card .label{font-size:11.5px; font-weight:700; color:var(--muted); letter-spacing:.02em; margin-bottom:8px;}
+  .stat-card .value{font-size:26px; font-weight:800; letter-spacing:-.01em;}
+  .stat-card .sub{font-size:12px; color:var(--muted); margin-top:3px;}
+  .stat-card.attn .value{color:var(--bad);}
+
+  /* two-col row */
+  .row-2{display:grid; grid-template-columns:1.35fr 1fr; gap:14px; align-items:start;}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 18px 16px;}
+  .panel h2{font-size:15px; margin:0 0 2px;}
+  .panel .panel-sub{font-size:12.5px; color:var(--muted); margin:0 0 14px;}
+
+  .chart-wrap{width:100%;}
+  .chart-wrap svg{width:100%; height:auto; overflow:visible;}
+  .chart-tip{fill:var(--panel); stroke:var(--line);}
+  .chart-tip text{font-size:11px; fill:var(--ink);}
+
+  .activity-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:13px;}
+  .activity-list li{display:flex; gap:10px;}
+  .activity-list .a-title{font-size:13.5px; font-weight:600;}
+  .activity-list .a-meta{font-size:12px; color:var(--muted); margin-top:1px;}
+
+  .table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--panel);}
+  table{width:100%; border-collapse:collapse; font-size:13.5px; min-width:640px;}
+  thead th{
+    text-align:left; font-size:11px; font-weight:700; color:var(--muted); letter-spacing:.03em;
+    padding:11px 14px; border-bottom:1px solid var(--line); white-space:nowrap;
+  }
+  tbody td{padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:color-mix(in srgb, var(--paper) 60%, transparent);}
+  td.strong{font-weight:700;}
+  td .sub{display:block; font-size:11.5px; color:var(--muted); margin-top:2px; font-weight:400;}
+
+  .toolbar{display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap;}
+  .search{
+    flex:1; min-width:200px; display:flex; align-items:center; gap:8px; border:1.5px solid var(--line);
+    border-radius:8px; padding:9px 12px; background:var(--panel);
+  }
+  .search input{border:none; outline:none; background:none; font-family:inherit; font-size:14px; width:100%; color:var(--ink);}
+  .search .icon{color:var(--muted);}
+  .chips{display:flex; gap:7px; flex-wrap:wrap;}
+  .chip{
+    border:1.5px solid var(--line); background:transparent; color:var(--ink); font-family:inherit;
+    font-size:12.5px; font-weight:700; padding:7px 13px; border-radius:999px; cursor:pointer;
+  }
+  .chip.active{background:var(--ink); border-color:var(--ink); color:var(--panel);}
+
+  .empty{padding:36px 20px; text-align:center; color:var(--muted); font-size:13.5px;}
+  .empty b{display:block; color:var(--ink); font-size:14.5px; margin-bottom:4px;}
+
+  /* plan cards (admin) */
+  .plan-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px;}
+  .plan-card{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 14px 14px;}
+  .plan-card.popular{border-color:var(--accent);}
+  .plan-card .tag{position:absolute; top:-9px; right:12px; background:var(--accent); color:var(--ink); font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;}
+  .plan-card .duration{font-size:14px; font-weight:700;}
+  .plan-card .price{font-size:22px; font-weight:800; margin:8px 0 2px; letter-spacing:-.01em;}
+  .plan-card .price small{font-size:12px; font-weight:600; color:var(--muted);}
+  .plan-card .devices{font-size:11.5px; color:var(--muted); border-top:1px dashed var(--line); margin-top:10px; padding-top:9px;}
+  .plan-card .speed{font-size:11.5px; color:var(--muted); margin-top:3px;}
+  .plan-card .speed b{color:var(--ink);}
+  .plan-card .row-actions{display:flex; gap:6px; margin-top:12px;}
+  .pill.throttled{background:var(--warn-bg); color:var(--warn);}
+  .plan-card.add{display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; border-style:dashed; color:var(--muted); cursor:pointer; min-height:150px;}
+  .plan-card.add:hover{color:var(--ink); border-color:var(--ink);}
+
+  /* settings */
+  .settings-grid{display:grid; gap:14px;}
+  .settings-section{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px;}
+  .settings-section h2{font-size:15px; margin:0 0 2px;}
+  .settings-section .desc{font-size:12.5px; color:var(--muted); margin:0 0 16px; line-height:1.5;}
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .form-grid .field{margin-bottom:0;}
+  .form-grid .field.full{grid-column:1/-1;}
+  .settings-section .foot-row{display:flex; justify-content:space-between; align-items:center; margin-top:16px; gap:12px; flex-wrap:wrap;}
+  .status-line{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--muted);}
+
+  .toggle{position:relative; width:38px; height:22px; border-radius:999px; background:var(--line); border:none; cursor:pointer; flex-shrink:0;}
+  .toggle i{position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform .15s;}
+  .toggle.on{background:var(--good);}
+  .toggle.on i{transform:translateX(16px);}
+
+  /* modals */
+  .modal-overlay{position:fixed; inset:0; background:rgba(15,20,32,.5); display:none; align-items:center; justify-content:center; padding:20px; z-index:60;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--panel); border-radius:14px; max-width:420px; width:100%; padding:22px 22px 20px; position:relative;}
+  .modal .close{position:absolute; top:14px; right:14px; background:none; border:none; color:var(--muted); cursor:pointer; padding:4px;}
+  .modal h3{font-size:17px; margin:0 0 6px;}
+  .modal p{font-size:13px; color:var(--muted); margin:0 0 14px; line-height:1.5;}
+  .modal .field{margin-bottom:14px;}
+  .code-box{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:15px; letter-spacing:.03em; line-height:1.9; max-height:180px; overflow-y:auto; margin-bottom:14px;}
+  .modal .modal-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .modal select{width:100%; border:1.5px solid var(--line); border-radius:8px; padding:10px 12px; font-size:15px; font-family:inherit; background:var(--panel); color:var(--ink);}
+
+  .toast{
+    position:fixed; top:20px; left:50%; transform:translate(-50%,-14px); background:var(--panel); border:1px solid var(--line);
+    border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px; font-size:13.5px; font-weight:600;
+    box-shadow:0 6px 20px rgba(20,25,40,.12); opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; z-index:80;
+  }
+  .toast.show{opacity:1; transform:translate(-50%,0);}
+  .toast .dot{margin-top:0;}
+
+  @media (max-width: 860px){
+    .form-grid{grid-template-columns:1fr;}
+    .row-2{grid-template-columns:1fr;}
+    .stat-grid{grid-template-columns:1fr 1fr;}
+  }
+  @media (max-width: 720px){
+    .hamburger{display:inline-flex;}
+    .sidebar{transform:translateX(-100%);}
+    .sidebar.open{transform:translateX(0);}
+    .content{margin-left:0; padding:18px 16px 50px;}
+    .stat-grid{grid-template-columns:1fr 1fr; gap:10px;}
+    .topbar h1{font-size:20px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SIGN-IN VIEW                                                  -->
+<!-- ============================================================ -->
+<div id="signinView" class="signin-screen">
+  <div class="signin-wrap">
+    <div class="brand-row">
+      <span class="bars"><i></i><i></i><i></i><i></i></span>
+      <span class="word"><b>MarNet WiFi</b><span>Operator console</span></span>
+    </div>
+
+    <div class="card">
+      <h1>Sign in</h1>
+      <p class="lead">Only authorised operators can view the network.</p>
+
+      <div class="field">
+        <label for="suUser">Username</label>
+        <input id="suUser" type="text" autocomplete="username" placeholder="operator">
+      </div>
+      <div class="field">
+        <label for="suPass">Password</label>
+        <div class="input-wrap">
+          <input id="suPass" type="password" autocomplete="current-password">
+          <button class="eye" id="suEye" type="button" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="suLockBox" class="lock-box" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span>This console is locked after too many tries. Wait <b id="suLockTimer">15:00</b> or call the operator line.</span>
+      </div>
+      <p id="suMsg" class="field-msg bad" style="display:none;">Access locked. Try again later.</p>
+
+      <button id="suSubmit" class="btn btn-solid" style="width:100%; justify-content:center; padding:12px;">Sign in</button>
+    </div>
+
+    <div class="hint-box">
+      <b>Suggested operator access</b>
+      <div class="creds">operator&nbsp;&nbsp;·&nbsp;&nbsp;MarNet742</div>
+      <div class="note">Three failed tries lock the console for 15 minutes. Change these when the backend is live. This demo accepts the credentials above — anything else counts as a failed try.</div>
+    </div>
+
+    <a class="back-link" href="#" id="backToPortal">← Back to captive portal</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- APP SHELL                                                     -->
+<!-- ============================================================ -->
+<div id="appView" class="app-shell" style="display:none;">
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="bars"><i></i><i></i><i></i><i></i></span>
+      <span><b>MarNet</b><span>Operator console</span></span>
+    </div>
+    <nav id="navList">
+      <!-- populated by JS -->
+    </nav>
+    <div class="foot">
+      Signed in as <b id="footUser">operator</b>
+      <div style="margin-top:8px;"><button id="signOutBtn">Sign out</button></div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- ---------- OVERVIEW ---------- -->
+    <section class="view active" data-view="overview">
+      <div class="topbar">
+        <div class="titles">
+          <button class="hamburger" data-menu-toggle aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div><p class="eyebrow">MarNet WiFi</p><h1>Overview</h1></div>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="statGrid"></div>
+
+      <div class="row-2">
+        <div class="panel">
+          <h2>Revenue — 7 days</h2>
+          <p class="panel-sub">Paid STK pushes, Kenyan shillings</p>
+          <div class="chart-wrap" id="chartWrap"></div>
+        </div>
+        <div class="panel">
+          <h2>Live activity</h2>
+          <p class="panel-sub">Everything the network just did</p>
+          <ul class="activity-list" id="activityList"></ul>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px;">
+        <h2>Online now</h2>
+        <p class="panel-sub">Devices with an active session right now</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Device</th><th>Plan</th><th>Time left</th><th>Data used</th><th></th></tr></thead>
+            <tbody id="onlineNowBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- VOUCHERS ---------- -->
+    <section class="view" data-view="vouchers">
+      <div class="topbar">
+        <div class="titles">
+          <button class="hamburger" data-menu-toggle aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div><p class="eyebrow">MarNet WiFi</p><h1>Vouchers</h1></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-solid" id="openCreateVoucher">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+            Create voucher
+          </button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <label class="search">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+          <input id="voucherSearch" type="text" placeholder="Search code, MAC, note">
+        </label>
+        <div class="chips" id="voucherChips">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="unused">Unused</button>
+          <button class="chip" data-filter="active">Active</button>
+          <button class="chip" data-filter="expired">Expired</button>
+          <button class="chip" data-filter="blocked">Blocked</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Code</th><th>Plan</th><th>Status</th><th>Bound MAC</th><th>Created</th><th></th></tr></thead>
+          <tbody id="voucherBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- SESSIONS ---------- -->
+    <section class="view" data-view="sessions">
+      <div class="topbar">
+        <div class="titles">
+          <button class="hamburger" data-menu-toggle aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div><p class="eyebrow">MarNet WiFi</p><h1>Sessions</h1></div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+          <input id="sessionSearch" type="text" placeholder="Search MAC, voucher code">
+        </label>
+        <div class="chips" id="sessionChips">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="active">Active</button>
+          <button class="chip" data-filter="ended">Ended</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Device (MAC)</th><th>Client</th><th>Plan</th><th>Started</th><th>Time left</th><th>Data used</th><th>Status</th><th></th></tr></thead>
+          <tbody id="sessionBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- PAYMENTS ---------- -->
+    <section class="view" data-view="payments">
+      <div class="topbar">
+        <div class="titles">
+          <button class="hamburger" data-menu-toggle aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div><p class="eyebrow">MarNet WiFi</p><h1>Payments</h1></div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+          <input id="paymentSearch" type="text" placeholder="Search phone, plan, code">
+        </label>
+        <div class="chips" id="paymentChips">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="confirmed">Confirmed</button>
+          <button class="chip" data-filter="pending">Pending</button>
+          <button class="chip" data-filter="failed">Failed</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Name</th><th>Phone</th><th>Plan</th><th>Amount</th><th>Status</th><th>Voucher</th></tr></thead>
+          <tbody id="paymentBody"></tbody>
+        </table>
+      </div>
+
+      <div class="topbar" style="margin-top:28px;">
+        <div><p class="eyebrow">Till payments (no STK)</p><h2 style="margin:2px 0 0; font-size:16px;">M-Pesa codes clients pasted in directly</h2></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Code</th><th>Name</th><th>Phone</th><th>Amount</th><th>Redeemed?</th><th>Bound MAC</th></tr></thead>
+          <tbody id="receiptBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- DEVICES ---------- -->
+    <section class="view" data-view="devices">
+      <div class="topbar">
+        <div class="titles">
+          <button class="hamburger" data-menu-toggle aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div><p class="eyebrow">MarNet WiFi</p><h1>Devices</h1></div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+          <input id="deviceSearch" type="text" placeholder="Search MAC address">
+        </label>
+        <div class="chips" id="deviceChips">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="online">Online</button>
+          <button class="chip" data-filter="blocked">Blocked</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>MAC address</th><th>Status</th><th>Last plan</th><th>Speed</th><th>Voucher guesses</th><th>Last seen</th><th></th></tr></thead>
+          <tbody id="deviceBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- LOGS ---------- -->
+    <section class="view" data-view="logs">
+      <div class="topbar">
+        <div class="titles">
+          <button class="hamburger" data-menu-toggle aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div><p class="eyebrow">MarNet WiFi</p><h1>Logs</h1></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost btn-sm" id="exportLogs">Export CSV</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+          <input id="logSearch" type="text" placeholder="Search event, actor, detail">
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Event</th><th>Actor</th><th>Detail</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- PLANS ---------- -->
+    <section class="view" data-view="plans">
+      <div class="topbar">
+        <div class="titles">
+          <button class="hamburger" data-menu-toggle aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div><p class="eyebrow">MarNet WiFi</p><h1>Plans</h1></div>
+        </div>
+      </div>
+      <p class="panel-sub" style="margin-bottom:16px;">These are the packages shown on the captive portal. Changes here take effect the next time a client opens the page. Speed limits are enforced on the router and never shown to clients.</p>
+      <div class="plan-grid" id="planGrid"></div>
+    </section>
+
+    <!-- ---------- SETTINGS ---------- -->
+    <section class="view" data-view="settings">
+      <div class="topbar">
+        <div class="titles">
+          <button class="hamburger" data-menu-toggle aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div><p class="eyebrow">MarNet WiFi</p><h1>Settings</h1></div>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+
+        <div class="settings-section">
+          <h2>MikroTik router</h2>
+          <p class="desc">Connection details for the router that creates hotspot users once a client pays or redeems a voucher.</p>
+          <div class="form-grid">
+            <div class="field"><label>Router address</label><input type="text" id="mtHost" placeholder="192.168.88.1"></div>
+            <div class="field"><label>API port</label><input type="text" id="mtPort" placeholder="8728"></div>
+            <div class="field"><label>API username</label><input type="text" id="mtUser" placeholder="marnet-api"></div>
+            <div class="field"><label>API password</label><input type="password" id="mtPass" placeholder="••••••••"></div>
+          </div>
+          <div class="foot-row">
+            <span class="status-line" id="mtStatus"><span class="dot warn" style="margin-top:0;"></span>Not connected — placeholder only</span>
+            <button class="btn btn-ghost btn-sm" id="mtTestBtn">Test connection</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>M-Pesa / payments</h2>
+          <p class="desc">Till or paybill used for STK push prompts on the captive portal.</p>
+          <div class="form-grid">
+            <div class="field"><label>Paybill / Till number</label><input type="text" id="mpTill" placeholder="400200"></div>
+            <div class="field"><label>Account reference</label><input type="text" id="mpRef" placeholder="MARNET"></div>
+            <div class="field full"><label>Daraja consumer key</label><input type="text" id="mpKey" placeholder="••••••••••••••••"></div>
+          </div>
+          <div class="foot-row">
+            <span class="status-line">Sandbox mode</span>
+            <button class="btn btn-ghost btn-sm" id="mpSaveBtn">Save</button>
+          </div>
+          <div class="foot-row">
+            <span class="status-line" id="c2bStatus"><span class="dot warn" style="margin-top:0;"></span>Lets clients pay the Till directly and paste the code — one-time setup</span>
+            <button class="btn btn-ghost btn-sm" id="c2bRegisterBtn">Register M-Pesa C2B URL</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>Database</h2>
+          <p class="desc">Vouchers, sessions, payments and logs are stored in Supabase. This console currently shows placeholder data — connect a project to make it live.</p>
+          <div class="form-grid">
+            <div class="field full"><label>Supabase project URL</label><input type="text" id="sbUrl" placeholder="https://xxxxxxxx.supabase.co"></div>
+            <div class="field full"><label>Supabase anon key</label><input type="password" id="sbKey" placeholder="••••••••••••••••"></div>
+          </div>
+          <div class="foot-row">
+            <span class="status-line" id="sbStatus"><span class="dot warn" style="margin-top:0;"></span>Using placeholder data, not connected</span>
+            <button class="btn btn-ghost btn-sm" id="sbConnectBtn">Connect</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>Backend</h2>
+          <p class="desc">The captive portal wakes the backend by pinging it as soon as a client opens the page, since the API is hosted on a free instance that sleeps after 15 minutes of inactivity.</p>
+          <div class="foot-row">
+            <span class="status-line" id="beStatus"><span class="dot warn" style="margin-top:0;"></span>Not checked yet</span>
+            <button class="btn btn-ghost btn-sm" id="bePingBtn">Ping now</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>Security</h2>
+          <p class="desc">Anti-abuse rules that apply across the captive portal and this console.</p>
+          <div class="foot-row" style="border-bottom:1px solid var(--line); padding-bottom:14px; margin-top:0;">
+            <div><b style="font-size:13.5px;">Lock voucher guessing after 10 attempts</b><div class="desc" style="margin:2px 0 0;">Device is blocked from guessing further codes and appears under Devices.</div></div>
+            <button class="toggle on" data-toggle></button>
+          </div>
+          <div class="foot-row" style="border-bottom:1px solid var(--line); padding:14px 0;">
+            <div><b style="font-size:13.5px;">One voucher, one MAC address</b><div class="desc" style="margin:2px 0 0;">A code binds to the first device that redeems it and can't be reused elsewhere.</div></div>
+            <button class="toggle on" data-toggle></button>
+          </div>
+          <div class="foot-row" style="margin-top:14px;">
+            <div><b style="font-size:13.5px;">Lock operator console after 3 failed sign-ins</b><div class="desc" style="margin:2px 0 0;">Locks for 15 minutes before another attempt is allowed.</div></div>
+            <button class="toggle on" data-toggle></button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>Operator account</h2>
+          <p class="desc">Update the credentials used to sign in to this console.</p>
+          <div class="form-grid">
+            <div class="field"><label>Username</label><input type="text" id="acctUsername" value="operator" disabled></div>
+            <div class="field"><label>New password</label><input type="password" id="acctNewPass" placeholder="Leave blank to keep current"></div>
+          </div>
+          <div class="foot-row">
+            <span class="status-line" id="acctStatus">Last sign-in: just now</span>
+            <button class="btn btn-solid btn-sm" id="acctSaveBtn">Save changes</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODALS                                                        -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="modalOverlay">
+
+  <div class="modal" id="createVoucherModal" style="display:none;">
+    <button class="close" data-close-modal aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <h3>Create voucher</h3>
+    <p>Mint fresh codes for a plan. Each one binds to the first device that redeems it.</p>
+    <div class="field">
+      <label>Plan</label>
+      <select id="cvPlan"></select>
+    </div>
+    <div class="field">
+      <label>How many</label>
+      <input type="number" id="cvCount" value="3" min="1" max="20">
+    </div>
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="cvNote" placeholder="e.g. Morning print run">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-solid" id="cvSubmit" style="flex:1; justify-content:center;">Create voucher</button>
+      <button class="btn btn-ghost" data-close-modal>Cancel</button>
+    </div>
+  </div>
+
+  <div class="modal" id="vouchersReadyModal" style="display:none;">
+    <button class="close" data-close-modal aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <h3>Vouchers ready</h3>
+    <p>Copy or print these codes now. Each unused code binds to the first device that redeems it.</p>
+    <div class="code-box" id="vrCodes"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" id="vrCopy">Copy codes</button>
+      <button class="btn btn-ghost btn-sm" id="vrPrint">Print</button>
+      <button class="btn btn-ghost btn-sm" id="vrMintMore">Mint more</button>
+    </div>
+  </div>
+
+  <div class="modal" id="editPlanModal" style="display:none;">
+    <button class="close" data-close-modal aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <h3 id="epTitle">Edit plan</h3>
+    <p>Speed limits are enforced on the router and are never shown to the client.</p>
+    <div class="field"><label>Price (Ksh)</label><input type="number" id="epPrice" min="0"></div>
+    <div class="field"><label>Devices allowed</label><input type="text" id="epDevices" placeholder="e.g. 1 device"></div>
+    <div class="field"><label>Speed limit (Mbps)</label><input type="number" id="epSpeed" min="1"></div>
+    <div class="modal-actions">
+      <button class="btn btn-solid" id="epSubmit" style="flex:1; justify-content:center;">Save plan</button>
+      <button class="btn btn-ghost" data-close-modal>Cancel</button>
+    </div>
+  </div>
+
+  <div class="modal" id="deviceSpeedModal" style="display:none;">
+    <button class="close" data-close-modal aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <h3>Throttle device</h3>
+    <p id="dsDeviceLabel">Limits this device's speed below its plan, regardless of what it paid for. Useful if you suspect it's sharing its connection — the device is never told.</p>
+    <div class="field"><label>Speed limit (Mbps)</label><input type="number" id="dsSpeed" min="1" placeholder="e.g. 2"></div>
+    <div class="modal-actions">
+      <button class="btn btn-solid" id="dsSubmit" style="flex:1; justify-content:center;">Apply limit</button>
+      <button class="btn btn-ghost" id="dsRemove">Remove limit</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"><span class="dot good"></span><span id="toastMsg"></span></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     Real backend wiring. Every render function below is fed from
+     STATE, which is populated by loadAll()/reload*() calls against
+     the actual /api/admin/* routes — there is no mock data left.
+  ============================================================ */
+
+  const BACKEND_URL = "https://marknet-backend-9ndb.onrender.com"; // TODO: confirm once backend is live
+
+  const icons = {
+    overview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>',
+    vouchers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z"/><path d="M10 6v12" stroke-dasharray="2.5 2.5"/></svg>',
+    sessions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2"/><path d="M7.5 9a6 6 0 0 1 9 0M4.5 6a10 10 0 0 1 15 0M9.5 12a3 3 0 0 1 5 0"/></svg>',
+    payments: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10h19"/></svg>',
+    devices: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></svg>',
+    logs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v16l-3-2-2 2-2-2-2 2-2-2-3 2Z"/><path d="M8 9h8M8 13h8"/></svg>',
+    plans: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16.5a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r="1"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8"/></svg>'
+  };
+
+  const NAV = [
+    {id:'overview', label:'Overview'},
+    {id:'vouchers', label:'Vouchers'},
+    {id:'sessions', label:'Sessions'},
+    {id:'payments', label:'Payments'},
+    {id:'devices', label:'Devices'},
+    {id:'logs', label:'Logs'},
+    {id:'plans', label:'Plans'},
+    {id:'settings', label:'Settings'}
+  ];
+
+  // Populated entirely from the backend — see loadAll() near the bottom.
+  const STATE = {
+    stats: { todayKsh:0, online:0, unusedCodes:0, needsAttention:0 },
+    revenue7d: [],
+    plans: [],
+    vouchers: [],
+    sessions: [],
+    payments: [],
+    receipts: [],
+    devices: [],
+    logs: []
+  };
+
+  /* ---------------- helpers ---------------- */
+  function ksh(n){ return 'Ksh ' + (n||0).toLocaleString(); }
+  function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+  function timeAgo(iso){
+    if(!iso) return '—';
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if(mins < 1) return 'Just now';
+    if(mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if(hrs < 24) return hrs + 'h ago';
+    const days = Math.floor(hrs / 24);
+    if(days < 2) return 'Yesterday';
+    return fmtDateTime(iso);
+  }
+  function fmtDateTime(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {day:'numeric', month:'short'}) + ', ' +
+      d.toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'});
+  }
+  function timeLeft(iso){
+    if(!iso) return '—';
+    const diff = new Date(iso).getTime() - Date.now();
+    if(diff <= 0) return 'Expired';
+    const mins = Math.floor(diff / 60000);
+    if(mins < 60) return mins + ' min remaining';
+    const hrs = Math.floor(mins / 60);
+    if(hrs < 24) return hrs + ' hrs remaining';
+    const days = Math.floor(hrs / 24);
+    return days + ' day' + (days===1?'':'s') + ' remaining';
+  }
+  function formatMb(mb){
+    mb = mb || 0;
+    if(mb >= 1024) return (Math.round(mb/1024*10)/10) + ' GB';
+    return mb + ' MB';
+  }
+  function maskPhone(p){
+    if(!p) return '—';
+    const s = String(p);
+    return s.length > 6 ? s.slice(0,4) + '••••' + s.slice(-3) : s;
+  }
+
+  let toastTimer = null;
+  function toast(msg, kind){
+    const t = document.getElementById('toast');
+    t.querySelector('.dot').className = 'dot ' + (kind || 'good');
+    document.getElementById('toastMsg').textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  /* ---------------- backend calls ---------------- */
+  function authHeaders(){
+    const t = sessionStorage.getItem('mn_admin_token');
+    return t ? {'Authorization': 'Bearer ' + t} : {};
+  }
+  async function api(path, opts){
+    opts = opts || {};
+    const headers = Object.assign({'Content-Type':'application/json'}, authHeaders(), opts.headers || {});
+    const res = await fetch(BACKEND_URL + path, Object.assign({}, opts, {headers}));
+    let data = null;
+    try { data = await res.json(); } catch(e){ /* no body */ }
+    if(!res.ok){
+      const err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return data || {};
+  }
+  function withTimeout(promise, ms){
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ]);
+  }
+
+  /* ---------------- sidebar nav ---------------- */
+  const navList = document.getElementById('navList');
+  NAV.forEach(item => {
+    const b = el('button', 'navlink' + (item.id === 'overview' ? ' active' : ''),
+      '<span class="icon">' + icons[item.id] + '</span><span>' + item.label + '</span>');
+    b.dataset.view = item.id;
+    b.addEventListener('click', () => switchView(item.id));
+    navList.appendChild(b);
+  });
+
+  function switchView(id){
+    document.querySelectorAll('.navlink').forEach(n => n.classList.toggle('active', n.dataset.view === id));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.dataset.view === id));
+    closeSidebar();
+    window.scrollTo(0, 0);
+  }
+
+  const sidebar = document.getElementById('sidebar');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  function openSidebar(){ sidebar.classList.add('open'); sidebarOverlay.classList.add('open'); }
+  function closeSidebar(){ sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); }
+  document.querySelectorAll('[data-menu-toggle]').forEach(b => b.addEventListener('click', openSidebar));
+  sidebarOverlay.addEventListener('click', closeSidebar);
+
+  /* ---------------- overview ---------------- */
+  function renderStats(){
+    const g = document.getElementById('statGrid');
+    g.innerHTML = '';
+    const cards = [
+      {label:'Today', value: ksh(STATE.stats.todayKsh), sub:'Confirmed M-Pesa'},
+      {label:'Online', value: STATE.stats.online, sub:'Active sessions'},
+      {label:'Unused codes', value: STATE.stats.unusedCodes, sub:'Ready to sell'},
+      {label:'Attention', value: STATE.stats.needsAttention, sub:'Failed pays + blocked MACs', attn: STATE.stats.needsAttention > 0}
+    ];
+    cards.forEach(c => {
+      const card = el('div', 'stat-card' + (c.attn ? ' attn' : ''),
+        '<div class="label">' + c.label.toUpperCase() + '</div>' +
+        '<div class="value">' + c.value + '</div>' +
+        '<div class="sub">' + c.sub + '</div>');
+      g.appendChild(card);
+    });
+  }
+
+  function renderChart(){
+    const wrap = document.getElementById('chartWrap');
+    const data = STATE.revenue7d.length ? STATE.revenue7d : [{d:'—',v:0}];
+    const w = 560, h = 210, padL = 30, padB = 24, padT = 14, padR = 8;
+    const max = Math.max(...data.map(p => p.v), 10);
+    const stepX = data.length > 1 ? (w - padL - padR) / (data.length - 1) : 0;
+    const yFor = v => padT + (h - padT - padB) * (1 - v / max);
+    const pts = data.map((p,i) => [padL + i*stepX, yFor(p.v)]);
+    const line = pts.map((p,i) => (i===0?'M':'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const area = line + ' L ' + pts[pts.length-1][0].toFixed(1) + ' ' + (h-padB) + ' L ' + pts[0][0].toFixed(1) + ' ' + (h-padB) + ' Z';
+
+    const ticks = [];
+    const tickCount = 4;
+    for(let i=0;i<=tickCount;i++){
+      const v = Math.round(max * i / tickCount);
+      ticks.push('<text x="' + (padL-8) + '" y="' + (yFor(v)+4) + '" text-anchor="end" font-size="11" fill="var(--muted)">' + v + '</text>' +
+        '<line x1="' + padL + '" y1="' + yFor(v) + '" x2="' + (w-padR) + '" y2="' + yFor(v) + '" stroke="var(--line)" stroke-width="1"/>');
+    }
+    const labels = data.map((p,i) => '<text x="' + (padL+i*stepX) + '" y="' + (h-4) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + p.d + '</text>').join('');
+
+    const peakIdx = data.reduce((best,p,i,arr) => p.v > arr[best].v ? i : best, 0);
+    const marker = pts[peakIdx];
+
+    wrap.innerHTML =
+      '<svg viewBox="0 0 ' + w + ' ' + h + '">' +
+        ticks.join('') +
+        '<path d="' + area + '" fill="var(--accent)" opacity="0.14"/>' +
+        '<path d="' + line + '" fill="none" stroke="var(--ink)" stroke-width="2"/>' +
+        pts.map(p => '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="2.4" fill="var(--ink)"/>').join('') +
+        (marker ? '<circle cx="'+marker[0]+'" cy="'+marker[1]+'" r="4" fill="var(--accent-deep)"/>' : '') +
+        labels +
+      '</svg>' +
+      '<p style="font-size:12px; color:var(--muted); margin:10px 0 0;">Peak day — ' + data[peakIdx].d + ': ' + ksh(data[peakIdx].v) + '</p>';
+  }
+
+  function activityKind(event){
+    const e = (event || '').toLowerCase();
+    if(e.includes('fail') || e.includes('block') || e.includes('lock')) return 'bad';
+    if(e.includes('queued') || e.includes('pending')) return 'warn';
+    return 'good';
+  }
+  function renderActivity(){
+    const list = document.getElementById('activityList');
+    const rows = STATE.logs.slice(0, 8);
+    list.innerHTML = rows.map(l =>
+      '<li><span class="dot ' + activityKind(l.event) + '"></span><div><div class="a-title">' + esc(l.event) + '</div><div class="a-meta">' + esc(timeAgo(l.created_at)) + ' · ' + esc(l.detail || l.actor) + '</div></div></li>'
+    ).join('') || '<li><div class="a-meta">No activity yet.</div></li>';
+  }
+
+  function renderOnlineNow(){
+    const body = document.getElementById('onlineNowBody');
+    const rows = STATE.sessions.filter(s => s.status === 'active');
+    body.innerHTML = rows.map(s =>
+      '<tr><td class="strong mono">' + esc(s.mac) + '</td><td>' + esc(s.plans ? s.plans.duration : '—') + '</td><td>' + esc(timeLeft(s.expires_at)) + '</td><td>' + esc(formatMb(s.data_used_mb)) + '</td>' +
+      '<td><button class="btn btn-danger btn-sm" data-disconnect="' + esc(s.mac) + '">Disconnect</button></td></tr>'
+    ).join('') || '<tr><td colspan="5"><div class="empty">No devices online right now.</div></td></tr>';
+  }
+
+  /* ---------------- vouchers ---------------- */
+  let voucherFilter = 'all', voucherQuery = '';
+  function voucherPlanLabel(v){
+    if(v.plans) return v.plans.duration + ' · ' + ksh(v.plans.price) + (v.note ? ' — ' + v.note : '');
+    return v.note || '—';
+  }
+  function renderVouchers(){
+    const body = document.getElementById('voucherBody');
+    const rows = STATE.vouchers.filter(v => {
+      const matchesFilter = voucherFilter === 'all' || v.status === voucherFilter;
+      const q = voucherQuery.toLowerCase();
+      const matchesQuery = !q || v.code.toLowerCase().includes(q) || (v.mac||'').toLowerCase().includes(q) || voucherPlanLabel(v).toLowerCase().includes(q);
+      return matchesFilter && matchesQuery;
+    });
+    body.innerHTML = rows.map(v =>
+      '<tr><td class="strong mono">' + esc(v.code) + '</td>' +
+      '<td>' + esc(voucherPlanLabel(v)) + '</td>' +
+      '<td><span class="pill ' + v.status + '">' + v.status + '</span></td>' +
+      '<td class="mono">' + esc(v.mac || '—') + '</td>' +
+      '<td>' + esc(fmtDateTime(v.created_at)) + '</td>' +
+      '<td>' + (v.status === 'blocked' ? '<button class="btn btn-ghost btn-sm" data-unblock-voucher="' + esc(v.code) + '">Unblock</button>' :
+                v.status === 'expired' ? '' :
+                '<button class="btn btn-danger btn-sm" data-revoke="' + esc(v.code) + '">Revoke</button>') + '</td></tr>'
+    ).join('') || '<tr><td colspan="6"><div class="empty"><b>No vouchers match</b>Try a different search or filter.</div></td></tr>';
+  }
+
+  document.getElementById('voucherSearch').addEventListener('input', e => { voucherQuery = e.target.value; renderVouchers(); });
+  document.getElementById('voucherChips').addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if(!chip) return;
+    document.querySelectorAll('#voucherChips .chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    voucherFilter = chip.dataset.filter;
+    renderVouchers();
+  });
+  document.getElementById('voucherBody').addEventListener('click', async e => {
+    const revoke = e.target.closest('[data-revoke]');
+    const unblock = e.target.closest('[data-unblock-voucher]');
+    if(revoke){
+      const code = revoke.dataset.revoke;
+      try {
+        await api('/api/admin/vouchers/' + encodeURIComponent(code), {method:'PATCH', body: JSON.stringify({action:'revoke'})});
+        await reloadVouchers(); await reloadOverview();
+        toast('Voucher ' + code + ' revoked', 'bad');
+      } catch(err){ toast(err.message || 'Could not revoke that voucher', 'bad'); }
+    }
+    if(unblock){
+      const code = unblock.dataset.unblockVoucher;
+      try {
+        await api('/api/admin/vouchers/' + encodeURIComponent(code), {method:'PATCH', body: JSON.stringify({action:'unblock'})});
+        await reloadVouchers();
+        toast('Voucher ' + code + ' unblocked');
+      } catch(err){ toast(err.message || 'Could not unblock that voucher', 'bad'); }
+    }
+  });
+
+  /* ---------------- create voucher modal ---------------- */
+  const modalOverlay = document.getElementById('modalOverlay');
+  const createVoucherModal = document.getElementById('createVoucherModal');
+  const vouchersReadyModal = document.getElementById('vouchersReadyModal');
+
+  function openModal(m){ modalOverlay.classList.add('open'); document.querySelectorAll('.modal').forEach(x => x.style.display = (x===m?'block':'none')); }
+  function closeModals(){ modalOverlay.classList.remove('open'); }
+  modalOverlay.addEventListener('click', e => { if(e.target === modalOverlay) closeModals(); });
+  document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', closeModals));
+
+  const cvPlan = document.getElementById('cvPlan');
+  function renderCvPlanOptions(){
+    cvPlan.innerHTML = STATE.plans.map(p => '<option value="' + p.id + '">' + p.duration + ' · ' + ksh(p.price) + '</option>').join('');
+  }
+
+  document.getElementById('openCreateVoucher').addEventListener('click', () => openModal(createVoucherModal));
+
+  document.getElementById('cvSubmit').addEventListener('click', async () => {
+    const planId = cvPlan.value;
+    const count = Math.max(1, Math.min(20, parseInt(document.getElementById('cvCount').value, 10) || 1));
+    const note = document.getElementById('cvNote').value.trim();
+    if(!planId){ toast('Choose a plan first', 'bad'); return; }
+    try {
+      const result = await api('/api/admin/vouchers', {method:'POST', body: JSON.stringify({planId, count, note})});
+      await reloadVouchers(); await reloadOverview();
+      document.getElementById('vrCodes').textContent = (result.codes || []).join('\n');
+      openModal(vouchersReadyModal);
+    } catch(err){ toast(err.message || 'Could not create vouchers', 'bad'); }
+  });
+
+  document.getElementById('vrCopy').addEventListener('click', () => {
+    const text = document.getElementById('vrCodes').textContent;
+    if(navigator.clipboard){ navigator.clipboard.writeText(text).then(() => toast('Codes copied')); }
+    else { toast('Copy not available in this browser'); }
+  });
+  document.getElementById('vrPrint').addEventListener('click', () => window.print());
+  document.getElementById('vrMintMore').addEventListener('click', () => openModal(createVoucherModal));
+
+  /* ---------------- sessions ---------------- */
+  let sessionFilter = 'all', sessionQuery = '';
+  function sessionClientLabel(s){
+    return s.customer_name || maskPhone(s.phone) || '—';
+  }
+  function renderSessions(){
+    const body = document.getElementById('sessionBody');
+    const rows = STATE.sessions.filter(s => {
+      const mf = sessionFilter === 'all' || s.status === sessionFilter;
+      const q = sessionQuery.toLowerCase();
+      const mq = !q || s.mac.toLowerCase().includes(q) || (s.plans && s.plans.duration.toLowerCase().includes(q)) || sessionClientLabel(s).toLowerCase().includes(q);
+      return mf && mq;
+    });
+    body.innerHTML = rows.map(s =>
+      '<tr><td class="strong mono">' + esc(s.mac) + '</td><td>' + esc(sessionClientLabel(s)) + '</td><td>' + esc(s.plans ? s.plans.duration : '—') + '</td><td>' + esc(timeAgo(s.started_at)) + '</td><td>' + esc(s.status==='active' ? timeLeft(s.expires_at) : '—') + '</td><td>' + esc(formatMb(s.data_used_mb)) + '</td>' +
+      '<td><span class="pill ' + (s.status==='active'?'active':'expired') + '">' + s.status + '</span></td>' +
+      '<td>' + (s.status==='active' ? '<button class="btn btn-danger btn-sm" data-disconnect="' + esc(s.mac) + '">Disconnect</button>' : '') + '</td></tr>'
+    ).join('') || '<tr><td colspan="8"><div class="empty">No sessions match.</div></td></tr>';
+  }
+  document.getElementById('sessionSearch').addEventListener('input', e => { sessionQuery = e.target.value; renderSessions(); });
+  document.getElementById('sessionChips').addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if(!chip) return;
+    document.querySelectorAll('#sessionChips .chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active'); sessionFilter = chip.dataset.filter; renderSessions();
+  });
+
+  document.body.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-disconnect]');
+    if(!btn) return;
+    const mac = btn.dataset.disconnect;
+    try {
+      await api('/api/admin/sessions/' + encodeURIComponent(mac) + '/disconnect', {method:'POST'});
+      await Promise.all([reloadSessions(), reloadOverview(), reloadDevices()]);
+      toast('Disconnected ' + mac, 'bad');
+    } catch(err){ toast(err.message || 'Could not disconnect that device', 'bad'); }
+  });
+
+  /* ---------------- payments ---------------- */
+  let paymentFilter = 'all', paymentQuery = '';
+  function renderPayments(){
+    const body = document.getElementById('paymentBody');
+    const rows = STATE.payments.filter(p => {
+      const mf = paymentFilter === 'all' || p.status === paymentFilter;
+      const q = paymentQuery.toLowerCase();
+      const mq = !q || (p.phone||'').toLowerCase().includes(q) || (p.plan_label||'').toLowerCase().includes(q) || (p.mpesa_receipt||'').toLowerCase().includes(q);
+      return mf && mq;
+    });
+    body.innerHTML = rows.map(p =>
+      '<tr><td>' + esc(timeAgo(p.created_at)) + '</td><td>' + esc(p.customer_name || '—') + '</td><td class="mono">' + esc(maskPhone(p.phone)) + '</td><td>' + esc(p.plan_label || '—') + '</td><td>' + ksh(p.amount) + '</td>' +
+      '<td><span class="pill ' + p.status + '">' + p.status + '</span></td><td class="mono">' + esc(p.mpesa_receipt || '—') + '</td></tr>'
+    ).join('') || '<tr><td colspan="7"><div class="empty">No payments match.</div></td></tr>';
+  }
+  document.getElementById('paymentSearch').addEventListener('input', e => { paymentQuery = e.target.value; renderPayments(); });
+  document.getElementById('paymentChips').addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if(!chip) return;
+    document.querySelectorAll('#paymentChips .chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active'); paymentFilter = chip.dataset.filter; renderPayments();
+  });
+
+  /* ---------------- M-Pesa receipts (Till, no STK) ---------------- */
+  function renderReceipts(){
+    const body = document.getElementById('receiptBody');
+    if(!body) return;
+    body.innerHTML = STATE.receipts.map(r =>
+      '<tr><td>' + esc(timeAgo(r.created_at)) + '</td><td class="mono">' + esc(r.code) + '</td><td>' + esc(r.customer_name || '—') + '</td><td class="mono">' + esc(maskPhone(r.phone)) + '</td><td>' + ksh(r.amount) + '</td>' +
+      '<td><span class="pill ' + (r.used ? 'active' : 'unused') + '">' + (r.used ? 'Yes' : 'No') + '</span></td><td class="mono">' + esc(r.mac || '—') + '</td></tr>'
+    ).join('') || '<tr><td colspan="7"><div class="empty">No M-Pesa Till payments yet.</div></td></tr>';
+  }
+
+  /* ---------------- devices ---------------- */
+  let deviceFilter = 'all', deviceQuery = '';
+  function deviceLastPlan(mac){
+    const s = STATE.sessions.filter(x => x.mac === mac).sort((a,b) => new Date(b.started_at) - new Date(a.started_at))[0];
+    return s && s.plans ? s.plans.duration : '—';
+  }
+  function renderDevices(){
+    const body = document.getElementById('deviceBody');
+    const rows = STATE.devices.filter(d => {
+      const mf = deviceFilter === 'all' || (deviceFilter === 'online' ? d.status === 'online' : d.status === deviceFilter);
+      const q = deviceQuery.toLowerCase();
+      const mq = !q || d.mac.toLowerCase().includes(q);
+      return mf && mq;
+    });
+    body.innerHTML = rows.map(d =>
+      '<tr><td class="strong mono">' + esc(d.mac) + '</td>' +
+      '<td><span class="pill ' + (d.status==='online'?'active':d.status==='blocked'?'blocked':'expired') + '">' + d.status + '</span></td>' +
+      '<td>' + esc(deviceLastPlan(d.mac)) + '</td>' +
+      '<td>' + (d.speed_override
+        ? '<span class="pill throttled">' + d.speed_override + ' Mbps</span>'
+        : '<span style="color:var(--muted);">Plan default</span>') + '</td>' +
+      '<td>' + d.guesses + ' / 10</td><td>' + esc(timeAgo(d.last_seen)) + '</td>' +
+      '<td style="display:flex; gap:6px; flex-wrap:wrap;">' +
+        (d.status==='blocked'
+          ? '<button class="btn btn-ghost btn-sm" data-unblock-device="' + esc(d.mac) + '">Unblock</button>'
+          : '<button class="btn btn-danger btn-sm" data-block-device="' + esc(d.mac) + '">Block</button>') +
+        '<button class="btn btn-ghost btn-sm" data-set-speed="' + esc(d.mac) + '">' + (d.speed_override ? 'Change speed' : 'Set speed') + '</button>' +
+      '</td></tr>'
+    ).join('') || '<tr><td colspan="7"><div class="empty">No devices match.</div></td></tr>';
+  }
+  document.getElementById('deviceSearch').addEventListener('input', e => { deviceQuery = e.target.value; renderDevices(); });
+  document.getElementById('deviceChips').addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if(!chip) return;
+    document.querySelectorAll('#deviceChips .chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active'); deviceFilter = chip.dataset.filter; renderDevices();
+  });
+  let speedEditingMac = null;
+  const deviceSpeedModal = document.getElementById('deviceSpeedModal');
+  document.body.addEventListener('click', async e => {
+    const block = e.target.closest('[data-block-device]');
+    const unblock = e.target.closest('[data-unblock-device]');
+    const setSpeed = e.target.closest('[data-set-speed]');
+    if(block){
+      const mac = block.dataset.blockDevice;
+      try {
+        await api('/api/admin/devices/' + encodeURIComponent(mac), {method:'PATCH', body: JSON.stringify({action:'block'})});
+        await Promise.all([reloadDevices(), reloadOverview()]);
+        toast('Blocked ' + mac, 'bad');
+      } catch(err){ toast(err.message || 'Could not block that device', 'bad'); }
+    }
+    if(unblock){
+      const mac = unblock.dataset.unblockDevice;
+      try {
+        await api('/api/admin/devices/' + encodeURIComponent(mac), {method:'PATCH', body: JSON.stringify({action:'unblock'})});
+        await Promise.all([reloadDevices(), reloadOverview()]);
+        toast('Unblocked ' + mac);
+      } catch(err){ toast(err.message || 'Could not unblock that device', 'bad'); }
+    }
+    if(setSpeed){
+      const mac = setSpeed.dataset.setSpeed;
+      const d = STATE.devices.find(x => x.mac === mac);
+      if(!d) return;
+      speedEditingMac = mac;
+      document.getElementById('dsDeviceLabel').textContent =
+        "Limits " + mac + "'s speed below its plan, regardless of what it paid for. Useful if you suspect it's sharing its connection — the device is never told.";
+      document.getElementById('dsSpeed').value = d.speed_override || '';
+      openModal(deviceSpeedModal);
+    }
+  });
+  document.getElementById('dsSubmit').addEventListener('click', async () => {
+    const speed = parseInt(document.getElementById('dsSpeed').value, 10);
+    if(!Number.isFinite(speed) || speed < 1){
+      toast('Enter a valid speed in Mbps first', 'bad');
+      return;
+    }
+    try {
+      await api('/api/admin/devices/' + encodeURIComponent(speedEditingMac), {method:'PATCH', body: JSON.stringify({action:'setSpeed', speedMbps: speed})});
+      await reloadDevices();
+      closeModals();
+      toast(speedEditingMac + ' throttled to ' + speed + ' Mbps');
+    } catch(err){ toast(err.message || 'Could not set that speed', 'bad'); }
+  });
+  document.getElementById('dsRemove').addEventListener('click', async () => {
+    try {
+      await api('/api/admin/devices/' + encodeURIComponent(speedEditingMac), {method:'PATCH', body: JSON.stringify({action:'setSpeed', speedMbps: null})});
+      await reloadDevices();
+      closeModals();
+      toast('Speed limit removed for ' + speedEditingMac);
+    } catch(err){ toast(err.message || 'Could not remove that limit', 'bad'); }
+  });
+
+  /* ---------------- logs ---------------- */
+  let logQuery = '';
+  function renderLogs(){
+    const body = document.getElementById('logBody');
+    const rows = STATE.logs.filter(l => {
+      const q = logQuery.toLowerCase();
+      return !q || l.event.toLowerCase().includes(q) || l.actor.toLowerCase().includes(q) || (l.detail||'').toLowerCase().includes(q);
+    });
+    body.innerHTML = rows.map(l =>
+      '<tr><td>' + esc(fmtDateTime(l.created_at)) + '</td><td class="strong">' + esc(l.event) + '</td><td>' + esc(l.actor) + '</td><td class="mono" style="font-size:12.5px;">' + esc(l.detail) + '</td></tr>'
+    ).join('') || '<tr><td colspan="4"><div class="empty">No log entries match.</div></td></tr>';
+  }
+  document.getElementById('logSearch').addEventListener('input', e => { logQuery = e.target.value; renderLogs(); });
+  document.getElementById('exportLogs').addEventListener('click', () => {
+    if(!STATE.logs.length){ toast('No logs to export yet', 'bad'); return; }
+    const header = 'Time,Event,Actor,Detail\n';
+    const rows = STATE.logs.map(l => [l.created_at, l.event, l.actor, l.detail || '']
+      .map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+    const blob = new Blob([header + rows], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'marnet-logs.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  /* ---------------- plans ---------------- */
+  function planDeviceLabel(p){
+    const n = p.devices_allowed || 1;
+    return n + ' device' + (n===1?'':'s');
+  }
+  function renderPlans(){
+    const grid = document.getElementById('planGrid');
+    grid.innerHTML = STATE.plans.map(p =>
+      '<div class="plan-card' + (p.popular ? ' popular' : '') + '">' +
+        (p.popular ? '<span class="tag">Popular</span>' : '') +
+        '<div class="duration">' + esc(p.duration) + '</div>' +
+        '<div class="price">' + ksh(p.price) + '<small> / ' + esc(p.duration) + '</small></div>' +
+        '<div class="devices">' + planDeviceLabel(p) + '</div>' +
+        '<div class="speed">Speed cap: <b>' + p.speed_mbps + ' Mbps</b></div>' +
+        '<div class="row-actions"><button class="btn btn-ghost btn-sm" data-edit-plan="' + p.id + '">Edit</button>' +
+        '<button class="btn btn-ghost btn-sm" data-toggle-popular="' + p.id + '">' + (p.popular ? 'Unmark' : 'Mark popular') + '</button></div>' +
+      '</div>'
+    ).join('') + '<div class="plan-card add" id="addPlanCard"><span style="font-size:22px;">+</span><span style="font-size:13px; font-weight:700;">Add plan</span></div>';
+
+    document.getElementById('addPlanCard').addEventListener('click', () => {
+      toast('Adding brand-new plans isn\'t wired up yet — edit an existing one for now');
+    });
+  }
+
+  let editingPlanId = null;
+  const editPlanModal = document.getElementById('editPlanModal');
+  document.getElementById('planGrid').addEventListener('click', async e => {
+    const edit = e.target.closest('[data-edit-plan]');
+    const pop = e.target.closest('[data-toggle-popular]');
+    if(edit){
+      const p = STATE.plans.find(x => x.id === edit.dataset.editPlan);
+      if(!p) return;
+      editingPlanId = p.id;
+      document.getElementById('epTitle').textContent = 'Edit ' + p.duration + ' plan';
+      document.getElementById('epPrice').value = p.price;
+      document.getElementById('epDevices').value = planDeviceLabel(p);
+      document.getElementById('epSpeed').value = p.speed_mbps;
+      openModal(editPlanModal);
+    }
+    if(pop){
+      const p = STATE.plans.find(x => x.id === pop.dataset.togglePopular);
+      if(!p) return;
+      try {
+        await api('/api/admin/plans/' + encodeURIComponent(p.id), {method:'PATCH', body: JSON.stringify({popular: !p.popular})});
+        await reloadPlans();
+      } catch(err){ toast(err.message || 'Could not update that plan', 'bad'); }
+    }
+  });
+  document.getElementById('epSubmit').addEventListener('click', async () => {
+    const p = STATE.plans.find(x => x.id === editingPlanId);
+    if(!p) return;
+    const price = parseInt(document.getElementById('epPrice').value, 10);
+    const speed = parseInt(document.getElementById('epSpeed').value, 10);
+    const devicesText = document.getElementById('epDevices').value.trim();
+    const devicesAllowed = parseInt(devicesText, 10) || p.devices_allowed || 1;
+    if(!Number.isFinite(price) || price < 0 || !Number.isFinite(speed) || speed < 1){
+      toast('Enter a valid price and speed first', 'bad');
+      return;
+    }
+    try {
+      await api('/api/admin/plans/' + encodeURIComponent(p.id), {
+        method:'PATCH',
+        body: JSON.stringify({price, speedMbps: speed, devicesAllowed})
+      });
+      await reloadPlans();
+      closeModals();
+      toast('Plan updated');
+    } catch(err){ toast(err.message || 'Could not update that plan', 'bad'); }
+  });
+
+  /* ---------------- settings toggles (display-only) ---------------- */
+  document.querySelectorAll('[data-toggle]').forEach(t => {
+    t.addEventListener('click', () => t.classList.toggle('on'));
+  });
+
+  /* ---------------- settings: connectivity + save actions ---------------- */
+  function setStatusLine(elId, dotClass, text){
+    document.getElementById(elId).innerHTML =
+      '<span class="dot ' + dotClass + '" style="margin-top:0;"></span>' + esc(text);
+  }
+
+  document.getElementById('mtTestBtn').addEventListener('click', async () => {
+    const host = document.getElementById('mtHost').value.trim();
+    if(!host){ toast('Enter the router address first', 'bad'); return; }
+    setStatusLine('mtStatus', 'warn', 'Testing…');
+    try {
+      await withTimeout(api('/api/admin/test-mikrotik', {
+        method: 'POST',
+        body: JSON.stringify({host, port: document.getElementById('mtPort').value, user: document.getElementById('mtUser').value})
+      }), 8000);
+      setStatusLine('mtStatus', 'good', 'Connected');
+      toast('Router connection looks good');
+    } catch (err) {
+      setStatusLine('mtStatus', 'bad', 'Not connected');
+      toast(err.message || 'Unknown error. Please try again.', 'bad');
+    }
+  });
+
+  document.getElementById('mpSaveBtn').addEventListener('click', () => {
+    const till = document.getElementById('mpTill').value.trim();
+    if(!till){ toast('Enter a paybill or till number first', 'bad'); return; }
+    // The Till/paybill number itself lives in the backend's MPESA_SHORTCODE
+    // env var, not a database row — update it there and redeploy.
+    toast('Update MPESA_SHORTCODE in the backend\'s environment and redeploy to change this.');
+  });
+
+  document.getElementById('c2bRegisterBtn').addEventListener('click', async () => {
+    setStatusLine('c2bStatus', 'warn', 'Registering…');
+    try {
+      await withTimeout(api('/api/admin/mpesa/register-c2b', {method:'POST'}), 15000);
+      setStatusLine('c2bStatus', 'good', 'Registered — Till payments will now confirm automatically');
+      toast('C2B URL registered with Safaricom');
+    } catch (err) {
+      setStatusLine('c2bStatus', 'bad', 'Registration failed');
+      toast(err.message || 'Unknown error. Please try again.', 'bad');
+    }
+  });
+
+  document.getElementById('sbConnectBtn').addEventListener('click', async () => {
+    const url = document.getElementById('sbUrl').value.trim();
+    const key = document.getElementById('sbKey').value.trim();
+    if(!url || !key){ toast('Enter your Supabase project URL and anon key first', 'bad'); return; }
+    setStatusLine('sbStatus', 'warn', 'Connecting…');
+    try {
+      await withTimeout(fetch(url.replace(/\/$/, '') + '/rest/v1/', {
+        headers: {'apikey': key}
+      }), 8000);
+      setStatusLine('sbStatus', 'good', 'Connected');
+      toast('Supabase connected');
+    } catch (err) {
+      setStatusLine('sbStatus', 'bad', 'Not connected');
+      toast('Unknown error. Please try again.', 'bad');
+    }
+  });
+
+  document.getElementById('bePingBtn').addEventListener('click', async () => {
+    setStatusLine('beStatus', 'warn', 'Pinging…');
+    try {
+      const res = await withTimeout(fetch(BACKEND_URL + '/api/health'), 10000);
+      if(!res.ok) throw new Error('not-ok');
+      setStatusLine('beStatus', 'good', 'Backend awake — last ping just now');
+      toast('Backend is awake');
+    } catch (err) {
+      setStatusLine('beStatus', 'bad', 'Backend unreachable');
+      toast('Unknown error. Please try again.', 'bad');
+    }
+  });
+
+  document.getElementById('acctSaveBtn').addEventListener('click', async () => {
+    const newPass = document.getElementById('acctNewPass').value;
+    if(!newPass){ toast('Enter a new password first', 'bad'); return; }
+    if(newPass.length < 6){ toast('Password must be at least 6 characters', 'bad'); return; }
+    try {
+      await api('/api/admin/account', {method:'PATCH', body: JSON.stringify({newPassword: newPass})});
+      document.getElementById('acctNewPass').value = '';
+      document.getElementById('acctStatus').textContent = 'Password changed just now';
+      toast('Password updated');
+    } catch(err){ toast(err.message || 'Could not update the password', 'bad'); }
+  });
+
+  /* ============================================================
+     RELOAD HELPERS — targeted refreshes after a single action, so
+     we don't have to re-fetch everything on every click.
+  ============================================================ */
+  async function reloadOverview(){ STATE.stats = (await api('/api/admin/overview')).stats; renderStats(); }
+  async function reloadVouchers(){ STATE.vouchers = (await api('/api/admin/vouchers')).vouchers; renderVouchers(); }
+  async function reloadSessions(){ STATE.sessions = (await api('/api/admin/sessions')).sessions; renderSessions(); renderOnlineNow(); }
+  async function reloadPayments(){ STATE.payments = (await api('/api/admin/payments')).payments; renderPayments(); }
+  async function reloadReceipts(){ STATE.receipts = (await api('/api/admin/mpesa-receipts')).receipts; renderReceipts(); }
+  async function reloadDevices(){ STATE.devices = (await api('/api/admin/devices')).devices; renderDevices(); }
+  async function reloadLogs(){ STATE.logs = (await api('/api/admin/logs')).logs; renderLogs(); renderActivity(); }
+  async function reloadPlans(){ STATE.plans = (await api('/api/admin/plans')).plans; renderPlans(); renderCvPlanOptions(); }
+
+  async function loadAll(){
+    try {
+      const [overview, plans, vouchers, sessions, payments, receipts, devices, logs, revenue] = await Promise.all([
+        api('/api/admin/overview'),
+        api('/api/admin/plans'),
+        api('/api/admin/vouchers'),
+        api('/api/admin/sessions'),
+        api('/api/admin/payments'),
+        api('/api/admin/mpesa-receipts'),
+        api('/api/admin/devices'),
+        api('/api/admin/logs'),
+        api('/api/admin/analytics/revenue7d')
+      ]);
+      STATE.stats = overview.stats;
+      STATE.plans = plans.plans || [];
+      STATE.vouchers = vouchers.vouchers || [];
+      STATE.sessions = sessions.sessions || [];
+      STATE.payments = payments.payments || [];
+      STATE.receipts = receipts.receipts || [];
+      STATE.devices = devices.devices || [];
+      STATE.logs = logs.logs || [];
+      STATE.revenue7d = revenue.revenue7d || [];
+
+      renderStats(); renderChart(); renderActivity(); renderOnlineNow();
+      renderVouchers(); renderCvPlanOptions(); renderSessions(); renderPayments();
+      renderReceipts(); renderDevices(); renderLogs(); renderPlans();
+    } catch(err){
+      console.error(err);
+      toast('Could not load data from the backend', 'bad');
+    }
+  }
+
+  /* ============================================================
+     SIGN-IN FLOW — real auth against POST /api/admin/login
+  ============================================================ */
+  const MAX_TRIES = 3, LOCK_MINUTES = 15;
+  let failedTries = 0, lockUntil = null, lockInterval = null;
+
+  const suUser = document.getElementById('suUser');
+  const suPass = document.getElementById('suPass');
+  const suMsg = document.getElementById('suMsg');
+  const suLockBox = document.getElementById('suLockBox');
+  const suSubmit = document.getElementById('suSubmit');
+  const suLockTimer = document.getElementById('suLockTimer');
+
+  document.getElementById('suEye').addEventListener('click', () => {
+    suPass.type = suPass.type === 'password' ? 'text' : 'password';
+  });
+
+  function fmtMMSS(ms){
+    const total = Math.max(0, Math.ceil(ms/1000));
+    const m = Math.floor(total/60), s = total%60;
+    return m + ':' + String(s).padStart(2,'0');
+  }
+  function startLock(){
+    lockUntil = Date.now() + LOCK_MINUTES*60*1000;
+    suSubmit.disabled = true;
+    suLockBox.style.display = 'flex';
+    suMsg.style.display = 'block';
+    clearInterval(lockInterval);
+    lockInterval = setInterval(() => {
+      const remain = lockUntil - Date.now();
+      if(remain <= 0){
+        clearInterval(lockInterval);
+        suSubmit.disabled = false;
+        suLockBox.style.display = 'none';
+        suMsg.style.display = 'none';
+        failedTries = 0;
+      } else {
+        suLockTimer.textContent = fmtMMSS(remain);
+      }
+    }, 250);
+    suLockTimer.textContent = fmtMMSS(LOCK_MINUTES*60*1000);
+  }
+
+  function enterApp(username){
+    document.getElementById('footUser').textContent = username;
+    const acctUsername = document.getElementById('acctUsername');
+    if(acctUsername) acctUsername.value = username;
+    document.getElementById('signinView').style.display = 'none';
+    document.getElementById('appView').style.display = 'flex';
+    loadAll();
+  }
+
+  suSubmit.addEventListener('click', async () => {
+    if(lockUntil && Date.now() < lockUntil) return;
+    const username = suUser.value.trim();
+    const password = suPass.value;
+    if(!username || !password){
+      suMsg.style.display = 'block';
+      suMsg.textContent = 'Enter a username and password.';
+      return;
+    }
+    suSubmit.disabled = true;
+    try {
+      const result = await api('/api/admin/login', {method:'POST', body: JSON.stringify({username, password})});
+      sessionStorage.setItem('mn_admin_token', result.token);
+      sessionStorage.setItem('mn_admin_user', result.username);
+      failedTries = 0;
+      suMsg.style.display = 'none';
+      enterApp(result.username);
+    } catch(err){
+      failedTries++;
+      if(failedTries >= MAX_TRIES){
+        startLock();
+      } else {
+        suMsg.style.display = 'block';
+        suMsg.textContent = (err.message || 'Incorrect username or password.') + ' ' + (MAX_TRIES - failedTries) + ' attempt' + (MAX_TRIES-failedTries===1?'':'s') + ' left.';
+      }
+    } finally {
+      suSubmit.disabled = false;
+    }
+  });
+  [suUser, suPass].forEach(i => i.addEventListener('keydown', e => { if(e.key === 'Enter') suSubmit.click(); }));
+
+  document.getElementById('signOutBtn').addEventListener('click', () => {
+    sessionStorage.removeItem('mn_admin_token');
+    sessionStorage.removeItem('mn_admin_user');
+    document.getElementById('appView').style.display = 'none';
+    document.getElementById('signinView').style.display = 'flex';
+    suUser.value = ''; suPass.value = '';
+  });
+  document.getElementById('backToPortal').addEventListener('click', e => { e.preventDefault(); toast('This would return to the captive portal'); });
+
+  /* ---------------- resume an existing session, if any ---------------- */
+  (async function initialCheck(){
+    const token = sessionStorage.getItem('mn_admin_token');
+    const username = sessionStorage.getItem('mn_admin_user');
+    if(!token) return;
+    try {
+      await api('/api/admin/me');
+      enterApp(username || 'operator');
+    } catch(err){
+      sessionStorage.removeItem('mn_admin_token');
+      sessionStorage.removeItem('mn_admin_user');
+    }
+  })();
+
+})();
+
+</script>
+</body>
+</html>
