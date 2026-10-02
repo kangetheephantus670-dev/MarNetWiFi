@@ -10,6 +10,7 @@ function list(name) {
 module.exports = {
   port: process.env.PORT || 3000,
   jwtSecret: process.env.JWT_SECRET || 'change-me-in-production',
+  routerPollKey: process.env.ROUTER_POLL_KEY,
   allowedOrigins: list('ALLOWED_ORIGINS'),
 
   supabaseUrl: process.env.SUPABASE_URL,
