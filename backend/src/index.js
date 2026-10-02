@@ -18,6 +18,8 @@ app.use(cors({
   origin: config.allowedOrigins.length ? config.allowedOrigins : true,
 }));
 
+app.get('/', (req, res) => res.send('MarNet backend is running'));
+
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mpesa', mpesaWebhook);
