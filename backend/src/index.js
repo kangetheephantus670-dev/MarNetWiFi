@@ -22,6 +22,10 @@ app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mpesa', mpesaWebhook);
 
+app.use('/api/router', require('./routes/router'));
+const expiry = require('./services/expiry');
+setInterval(() => expiry.sweep().catch(console.error), 60000);
+
 app.use(notFound);
 app.use(errorHandler);
 
