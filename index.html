@@ -541,12 +541,12 @@
   //   GET  /api/status/:id          -> { status: queued|provisioned|failed }
   // "device" carries whatever the MikroTik hotspot login redirect gives
   // us (mac/ip), so the backend can bind a plan or voucher to one device
-  // and enforce "no sharing" + the per-code guess lockout server-side.
+  // and enforce "no sharing" + the per-code guess lockout s-side.
   // Phone/tethering (hotspot) sharing is enforced on the router itself,
   // not from this page.
   // ==================================================================
 
-  var API_BASE = "https://marnetwifi.onrender.com"; // TODO: confirm once backend is live
+  var API_BASE = "https://marnet-backend-9ndb.onrender.com"; 
 
   function getDevice(){
     var qs = new URLSearchParams(window.location.search);
