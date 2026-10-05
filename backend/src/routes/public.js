@@ -22,6 +22,25 @@ function getMac(req) {
   return mac ? String(mac).toUpperCase() : null;
 }
 
+// The router polls for jobs every ~10s. Wait until it has picked up this
+// device's "add user" job, then give it a moment to apply it, so the portal
+// only says "connected" once the router really knows the user.
+async function waitForRouter(mac, maxMs = 20000) {
+  const end = Date.now() + maxMs;
+  while (Date.now() < end) {
+    const { data } = await supabase
+      .from('router_jobs')
+      .select('id')
+      .eq('mac', mac)
+      .eq('action', 'add')
+      .eq('status', 'pending')
+      .limit(1);
+    if (!data || !data.length) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  await new Promise((r) => setTimeout(r, 3000));
+}
+
 // Five STK push attempts per minute per IP is plenty for a real person
 // buying a bundle, and slows down anyone trying to hammer the endpoint.
 const stkLimiter = rateLimit({
@@ -93,6 +112,16 @@ router.get('/status/:id', async (req, res, next) => {
     if (!payment) return res.json({ status: 'queued' });
 
     if (payment.status === 'confirmed' && payment.hotspot_username) {
+      if (payment.mac) {
+        const { data: pend } = await supabase
+          .from('router_jobs')
+          .select('id')
+          .eq('mac', payment.mac)
+          .eq('action', 'add')
+          .eq('status', 'pending')
+          .limit(1);
+        if (pend && pend.length) return res.json({ status: 'queued' });
+      }
       return res.json({
         status: 'provisioned',
         hotspotUsername: payment.hotspot_username,
@@ -123,20 +152,20 @@ router.post('/reconnect', async (req, res, next) => {
 
     if (!session) return res.json({ ok: false });
 
-    // Belt-and-braces: if the router doesn't currently show this MAC as
-    // active (e.g. it rebooted), re-provision it rather than trusting our
-    // own database alone.
-    const online = await mikrotik.isOnline(mac).catch(() => true);
-    if (!online) {
-      await mikrotik.provisionUser({
-        mac,
-        username: mac.replace(/:/g, ''),
-        password: session.hotspot_password || randomCode('', 8),
-        rateLimitMbps: session.speed_mbps,
-      }).catch(() => {});
-    }
+    // Always re-queue the router user (it may have been removed or the
+    // router may have rebooted), wait for the router to apply it, then hand
+    // the portal the login details.
+    const username = mac.replace(/:/g, '');
+    const password = session.hotspot_password || randomCode('', 8);
+    await mikrotik.provisionUser({
+      mac,
+      username,
+      password,
+      rateLimitMbps: session.speed_mbps,
+    }).catch(() => {});
+    await waitForRouter(mac);
 
-    res.json({ ok: true });
+    res.json({ ok: true, hotspotUsername: username, hotspotPassword: password });
   } catch (err) {
     next(err);
   }
@@ -186,9 +215,9 @@ router.post('/voucher/redeem', async (req, res, next) => {
       ? await vouchers.redeem(cleanCode, mac)
       : await mpesaReceipts.redeem(cleanCode, mac);
 
-   // res.json(toRedeemResponse(result));
     const response = toRedeemResponse(result);
     if (response.ok) {
+      await waitForRouter(mac);
       const { data: s } = await supabase
         .from('sessions')
         .select('hotspot_password')
