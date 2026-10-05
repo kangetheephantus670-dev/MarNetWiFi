@@ -1,12 +1,15 @@
-// PULL MODE: Render can't reach the router, so instead of talking to
-// RouterOS directly this file queues jobs in the router_jobs table. The
-// router fetches them from GET /api/router/poll (see routes/router.js).
-// Function names/signatures match the old file, so vouchers.js,
-// mpesaReceipts.js, mpesaWebhook.js and admin.js need no changes.
+// PULL MODE: Render can't reach the router, so jobs are queued in the
+// router_jobs table and the router fetches them from /api/router/poll.
 const supabase = require('../supabaseClient');
 const config = require('../config');
 
 async function queue(row) {
+  // The latest instruction for a device wins: retire older pending jobs.
+  await supabase
+    .from('router_jobs')
+    .update({ status: 'superseded' })
+    .eq('mac', row.mac)
+    .eq('status', 'pending');
   const { error } = await supabase.from('router_jobs').insert(row);
   if (error) throw error;
   return true;
@@ -26,8 +29,6 @@ async function removeUser(mac) {
   return queue({ action: 'remove', mac });
 }
 
-// Re-queues the user with a new speed (the router script replaces the old
-// entry and drops the live session, so the device logs in again).
 async function setRateLimit(mac, mbps) {
   const { data: session } = await supabase
     .from('sessions')
@@ -47,12 +48,8 @@ async function setRateLimit(mac, mbps) {
   });
 }
 
-// The router keeps hotspot users across reboots, so there's nothing to heal.
 async function isOnline() { return true; }
-
-// Live usage isn't reported in pull mode yet (data_used_mb stays 0).
 async function listActiveUsage() { return []; }
-
 async function testConnection() { return { name: 'pull-mode (router polls Render)' }; }
 
 module.exports = { testConnection, provisionUser, setRateLimit, removeUser, isOnline, listActiveUsage };
