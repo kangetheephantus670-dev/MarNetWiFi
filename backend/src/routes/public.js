@@ -186,7 +186,23 @@ router.post('/voucher/redeem', async (req, res, next) => {
       ? await vouchers.redeem(cleanCode, mac)
       : await mpesaReceipts.redeem(cleanCode, mac);
 
-    res.json(toRedeemResponse(result));
+   // res.json(toRedeemResponse(result));
+    const response = toRedeemResponse(result);
+    if (response.ok) {
+      const { data: s } = await supabase
+        .from('sessions')
+        .select('hotspot_password')
+        .eq('mac', mac)
+        .eq('status', 'active')
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (s) {
+        response.hotspotUsername = mac.replace(/:/g, '');
+        response.hotspotPassword = s.hotspot_password;
+      }
+    }
+    res.json(response);
   } catch (err) {
     next(err);
   }
