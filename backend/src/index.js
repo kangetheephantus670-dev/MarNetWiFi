@@ -20,7 +20,7 @@ app.use(cors({
 
 app.get('/', (req, res) => res.send('MarNet backend is running'));
 
-// Router polls this every ~20s. One job per line, or "OK" when empty.
+// Router polls this every ~10s. One job per line, or "OK" when empty.
 const MAC_RE = /^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/;
 const SAFE_RE = /^[A-Za-z0-9]+$/;
 app.get('/api/router/poll', async (req, res) => {
@@ -58,6 +58,9 @@ app.get('/api/router/poll', async (req, res) => {
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mpesa', mpesaWebhook);
+// Same handlers under a neutral address: Daraja can reject callback URLs
+// that contain the word "mpesa", so payments are confirmed via /api/pay.
+app.use('/api/pay', mpesaWebhook);
 
 setInterval(() => expiry.sweep().catch(console.error), 60000);
 
