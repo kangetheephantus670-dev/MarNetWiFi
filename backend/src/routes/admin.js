@@ -195,10 +195,16 @@ router.get('/usage/:mac', requireAdmin, async (req, res, next) => {
 
 router.post('/sessions/:mac/disconnect', requireAdmin, async (req, res, next) => {
   try {
-    const mac = req.params.mac;
+    const mac = String(req.params.mac).toUpperCase();
+    // Kick the device off the router only. The plan and its remaining time
+    // stay valid, so the customer can tap "Connect" on the portal to come back.
     await mikrotik.removeUser(mac).catch(() => {});
-    await supabase.from('sessions').update({ status: 'ended' }).eq('mac', mac).eq('status', 'active');
-    await supabase.from('logs').insert({ event: 'Device disconnected', actor: req.admin.sub, detail: mac });
+    await supabase.from('devices').update({ status: 'offline' }).eq('mac', mac);
+    await supabase.from('logs').insert({
+      event: 'Device disconnected',
+      actor: req.admin.sub,
+      detail: mac + ' (plan kept, can reconnect)',
+    });
     res.json({ ok: true });
   } catch (err) {
     next(err);
