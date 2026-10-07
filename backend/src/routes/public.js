@@ -1,4 +1,4 @@
-// These five endpoints are the ones marnet-portal.html already calls.
+// These endpoints are the ones the MarNet portal (login/index.html) calls.
 // Nothing here requires login — anyone on the hotspot's network can reach
 // these, which is the point, so every input is treated as untrusted.
 const express = require('express');
@@ -41,6 +41,20 @@ async function waitForRouter(mac, maxMs = 20000) {
   await new Promise((r) => setTimeout(r, 3000));
 }
 
+// The plans the portal shows. Loaded live so admin changes appear at once.
+router.get('/plans', async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('plans')
+      .select('id, duration, price, popular, devices_allowed, speed_mbps')
+      .order('price', { ascending: true });
+    if (error) throw error;
+    res.json({ plans: data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Five STK push attempts per minute per IP is plenty for a real person
 // buying a bundle, and slows down anyone trying to hammer the endpoint.
 const stkLimiter = rateLimit({
@@ -53,32 +67,41 @@ const stkLimiter = rateLimit({
 
 router.post('/stk-push', stkLimiter, async (req, res, next) => {
   try {
-    const { phone, plan, amount, device } = req.body || {};
+    const { phone, planId, plan, amount, device } = req.body || {};
 
     if (!phone || !/^0[71]\d{8}$/.test(phone)) {
       return res.status(400).json({ error: 'Enter a valid Safaricom number' });
     }
-    if (!plan || !amount) {
-      return res.status(400).json({ error: 'Missing plan details' });
-    }
 
     const mac = device && device.mac ? String(device.mac).toUpperCase() : null;
+    if (!mac) {
+      return res.status(400).json({ error: 'We could not detect your device. Reconnect to the WiFi and try again.' });
+    }
 
-    // Best-effort match to a real plan row, so we know its speed cap and
-    // duration later. Not fatal if it doesn't match — plan/amount from the
-    // request still drive the STK push either way.
-    const { data: planRow } = await supabase
-      .from('plans')
-      .select('*')
-      .ilike('duration', plan)
-      .eq('price', amount)
-      .maybeSingle();
+    // The price always comes from the plans table, never from the browser,
+    // so nobody can pay less than a plan costs.
+    let planRow = null;
+    if (planId) {
+      const { data } = await supabase.from('plans').select('*').eq('id', planId).maybeSingle();
+      planRow = data;
+    } else if (plan && amount) {
+      const { data } = await supabase
+        .from('plans')
+        .select('*')
+        .ilike('duration', plan)
+        .eq('price', amount)
+        .maybeSingle();
+      planRow = data;
+    }
+    if (!planRow) {
+      return res.status(400).json({ error: 'That plan is no longer available. Refresh the page and try again.' });
+    }
 
     const mpesaRes = await mpesa.stkPush({
       phone,
-      amount,
+      amount: planRow.price,
       accountReference: 'MARNET',
-      description: plan + ' WiFi bundle',
+      description: planRow.duration + ' WiFi bundle',
     });
 
     if (!mpesaRes.CheckoutRequestID) {
@@ -88,9 +111,9 @@ router.post('/stk-push', stkLimiter, async (req, res, next) => {
     await supabase.from('payments').insert({
       checkout_request_id: mpesaRes.CheckoutRequestID,
       phone,
-      plan_id: planRow ? planRow.id : null,
-      plan_label: plan,
-      amount,
+      plan_id: planRow.id,
+      plan_label: planRow.duration,
+      amount: planRow.price,
       mac,
       status: 'pending',
     });
@@ -208,10 +231,14 @@ router.post('/voucher/redeem', async (req, res, next) => {
       return res.json({ ok: false, message: 'Too many attempts. Please contact us for help.' });
     }
 
-    // Admin-minted vouchers are always "MN" + 6 chars; anything else is
-    // treated as a pasted M-Pesa transaction code (e.g. "UIGL56IRMO").
-    const cleanCode = String(code).trim().toUpperCase();
-    const result = cleanCode.startsWith('MN')
+    // Accept a bare code OR a whole pasted M-Pesa SMS: pull the code out of it.
+    const raw = String(code).toUpperCase();
+    const found = raw.match(/\bMN[A-Z0-9]{6}\b/) || raw.match(/\b[A-Z0-9]{10}\b/);
+    const cleanCode = found ? found[0] : raw.replace(/\s+/g, '').slice(0, 20);
+    // Admin vouchers are exactly "MN" + 6 characters; M-Pesa codes are 10
+    // (e.g. "UIGL56IRMO") and can start with any letters, including MN.
+    const isVoucher = /^MN[A-Z0-9]{6}$/.test(cleanCode);
+    const result = isVoucher
       ? await vouchers.redeem(cleanCode, mac)
       : await mpesaReceipts.redeem(cleanCode, mac);
 
