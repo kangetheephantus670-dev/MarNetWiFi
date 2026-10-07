@@ -52,6 +52,7 @@ async function confirmPayment(payment, receipt) {
     await supabase.from('sessions').insert({
       mac,
       plan_id: payment.plan_id,
+      phone: payment.phone || null,
       started_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + ms).toISOString(),
       status: 'active',
