@@ -1,6 +1,6 @@
 // Talks to Safaricom's Daraja API to request an STK push (the M-Pesa PIN
 // prompt on the client's phone). The actual payment result doesn't come
-// back from this call — it arrives later at /api/mpesa/callback (or is
+// back from this call — it arrives later at /api/pay/callback (or is
 // picked up by stkQuery below if that callback never arrives).
 const axios = require('axios');
 const config = require('../config');
@@ -47,7 +47,15 @@ function normalizePhone(phone) {
   return v;
 }
 
+// For a Buy Goods TILL:
+//   BusinessShortCode = Store Number (1263488)  -> config.mpesa.shortcode
+//   PartyB            = Till Number  (1734193)  -> config.mpesa.till
+//   TransactionType   = CustomerBuyGoodsOnline
 async function stkPush({ phone, amount, accountReference, description }) {
+  if (!config.mpesa.till) {
+    throw new Error('Till number is not set (config.mpesa.till / TILL env var)');
+  }
+
   const token = await getAccessToken();
   const ts = timestamp();
   const password = Buffer.from(
@@ -60,10 +68,10 @@ async function stkPush({ phone, amount, accountReference, description }) {
       BusinessShortCode: config.mpesa.shortcode,
       Password: password,
       Timestamp: ts,
-      TransactionType: 'CustomerPayBillOnline',
-      Amount: amount,
+      TransactionType: 'CustomerBuyGoodsOnline',
+      Amount: Math.round(Number(amount)),
       PartyA: normalizePhone(phone),
-      PartyB: config.mpesa.shortcode,
+      PartyB: config.mpesa.till,
       PhoneNumber: normalizePhone(phone),
       CallBackURL: config.mpesa.callbackUrl,
       AccountReference: accountReference || 'MARNET',
