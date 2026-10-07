@@ -28,7 +28,12 @@ module.exports = {
     env: process.env.MPESA_ENV || 'sandbox',
     consumerKey: process.env.MPESA_CONSUMER_KEY,
     consumerSecret: process.env.MPESA_CONSUMER_SECRET,
+    // Buy Goods store (head office) number, used as BusinessShortCode
+    // and to build the STK password.
     shortcode: process.env.MPESA_SHORTCODE,
+    // Till number that receives the money (PartyB). Read from the
+    // `TILL` variable set in Render.
+    till: process.env.TILL,
     passkey: process.env.MPESA_PASSKEY,
     callbackUrl: process.env.MPESA_CALLBACK_URL,
     // Only needed for the Till "paste your M-Pesa code" flow (C2B), which
