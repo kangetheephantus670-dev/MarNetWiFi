@@ -4,11 +4,55 @@
 // the client redeems that same receipt code here — mirroring vouchers.js
 // one-code-one-device rule, but matched by amount to a plan instead of
 // carrying a plan_id from the start.
+//
+// Codes from payments made through the portal's STK push live in the
+// payments table instead; redeemStkPayment() below handles those so the
+// same pasted code works whichever way the customer paid.
 const supabase = require('../supabaseClient');
 const devices = require('./devices');
 const mikrotik = require('./mikrotik');
 const { randomCode } = require('../utils/codes');
 const DURATION_MS = require('../utils/durations');
+
+// A code from an STK-push payment: the plan was already provisioned when
+// the payment was confirmed, so this just reconnects the device it was
+// bought for. Returns null when the code isn't an STK payment at all.
+async function redeemStkPayment(code, mac) {
+  const { data: payment } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('mpesa_receipt', code)
+    .eq('status', 'confirmed')
+    .maybeSingle();
+  if (!payment) return null;
+
+  if (payment.mac && String(payment.mac).toUpperCase() !== mac) {
+    await devices.recordGuess(mac, false);
+    return { status: 'wrong_device' };
+  }
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('mac', mac)
+    .eq('status', 'active')
+    .order('expires_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (session && new Date(session.expires_at) > new Date()) {
+    // Re-queue the router user in case it was removed (e.g. after Disconnect).
+    await mikrotik.provisionUser({
+      mac,
+      username: mac.replace(/:/g, ''),
+      password: session.hotspot_password,
+      rateLimitMbps: session.speed_mbps,
+    }).catch(() => {});
+    await devices.recordGuess(mac, true);
+    return { status: 'ok', expiresAt: session.expires_at };
+  }
+  return { status: 'expired' };
+}
 
 async function redeem(code, mac) {
   const { data: receipt } = await supabase
@@ -18,6 +62,8 @@ async function redeem(code, mac) {
     .maybeSingle();
 
   if (!receipt) {
+    const fromStk = await redeemStkPayment(code, mac);
+    if (fromStk) return fromStk;
     await devices.recordGuess(mac, false);
     return { status: 'not_found' };
   }
