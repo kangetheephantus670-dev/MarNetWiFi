@@ -465,6 +465,9 @@
           </button>
           <div><p class="eyebrow">MarNet WiFi</p><h1>Sessions</h1></div>
         </div>
+        <div class="actions">
+          <button class="btn btn-solid" id="openGrant">Grant time</button>
+        </div>
       </div>
       <div class="toolbar">
         <label class="search">
@@ -767,6 +770,30 @@
     <div class="modal-actions">
       <button class="btn btn-solid" id="dsSubmit" style="flex:1; justify-content:center;">Apply limit</button>
       <button class="btn btn-ghost" id="dsRemove">Remove limit</button>
+    </div>
+  </div>
+
+  <div class="modal" id="grantModal" style="display:none;">
+    <button class="close" data-close-modal aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <h3>Grant time</h3>
+    <p>Give a device access for a set period at a speed you choose. No payment needed. It replaces any plan the device has now.</p>
+    <div class="field"><label>Device MAC</label><input type="text" id="gtMac" placeholder="AA:BB:CC:DD:EE:FF"></div>
+    <div class="field"><label>Time</label>
+      <div style="display:flex; gap:8px;">
+        <input type="number" id="gtAmount" min="1" value="1" style="flex:1;">
+        <select id="gtUnit" style="flex:1;">
+          <option value="1">Minutes</option>
+          <option value="60" selected>Hours</option>
+          <option value="1440">Days</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Speed (Mbps)</label><input type="number" id="gtSpeed" min="1" placeholder="e.g. 5"></div>
+    <div class="modal-actions">
+      <button class="btn btn-solid" id="gtSubmit" style="flex:1; justify-content:center;">Grant access</button>
+      <button class="btn btn-ghost" data-close-modal>Cancel</button>
     </div>
   </div>
 
@@ -1113,7 +1140,11 @@
     body.innerHTML = rows.map(s =>
       '<tr><td class="strong mono">' + esc(s.mac) + '</td><td>' + esc(sessionClientLabel(s)) + '</td><td>' + esc(s.plans ? s.plans.duration : '—') + '</td><td>' + esc(timeAgo(s.started_at)) + '</td><td>' + esc(s.status==='active' ? timeLeft(s.expires_at) : '—') + '</td><td>' + esc(formatMb(s.data_used_mb)) + '</td>' +
       '<td><span class="pill ' + (s.status==='active'?'active':'expired') + '">' + s.status + '</span></td>' +
-      '<td>' + (s.status==='active' ? '<button class="btn btn-danger btn-sm" data-disconnect="' + esc(s.mac) + '">Disconnect</button>' : '') + '</td></tr>'
+      '<td><div style="display:flex; gap:6px; flex-wrap:wrap;">' + (s.status==='active'
+        ? '<button class="btn btn-danger btn-sm" data-disconnect="' + esc(s.mac) + '">Disconnect</button>' +
+          '<button class="btn btn-danger btn-sm" data-expire="' + esc(s.mac) + '">End plan</button>'
+        : '') +
+        '<button class="btn btn-ghost btn-sm" data-grant="' + esc(s.mac) + '">Grant time</button></div></td></tr>'
     ).join('') || '<tr><td colspan="8"><div class="empty">No sessions match.</div></td></tr>';
   }
   document.getElementById('sessionSearch').addEventListener('input', e => { sessionQuery = e.target.value; renderSessions(); });
@@ -1132,6 +1163,45 @@
       await Promise.all([reloadSessions(), reloadOverview(), reloadDevices()]);
       toast('Disconnected ' + mac, 'bad');
     } catch(err){ toast(err.message || 'Could not disconnect that device', 'bad'); }
+  });
+
+  /* ---------------- end plan + grant time ---------------- */
+  const grantModal = document.getElementById('grantModal');
+  function openGrant(mac){
+    document.getElementById('gtMac').value = mac || '';
+    document.getElementById('gtAmount').value = '1';
+    document.getElementById('gtUnit').value = '60';
+    document.getElementById('gtSpeed').value = '';
+    openModal(grantModal);
+  }
+  document.getElementById('openGrant').addEventListener('click', () => openGrant(''));
+  document.body.addEventListener('click', async e => {
+    const grant = e.target.closest('[data-grant]');
+    const exp = e.target.closest('[data-expire]');
+    if(grant){ openGrant(grant.dataset.grant); return; }
+    if(exp){
+      const mac = exp.dataset.expire;
+      if(!confirm('End the plan for ' + mac + '? They are disconnected and their remaining time is cancelled.')) return;
+      try {
+        await api('/api/admin/sessions/' + encodeURIComponent(mac) + '/expire', {method:'POST'});
+        await Promise.all([reloadSessions(), reloadOverview(), reloadDevices(), reloadLogs()]);
+        toast('Plan ended for ' + mac, 'bad');
+      } catch(err){ toast(err.message || 'Could not end that plan', 'bad'); }
+    }
+  });
+  document.getElementById('gtSubmit').addEventListener('click', async () => {
+    const mac = document.getElementById('gtMac').value.trim().toUpperCase();
+    const minutes = Math.round(parseFloat(document.getElementById('gtAmount').value) * parseInt(document.getElementById('gtUnit').value, 10));
+    const speed = parseInt(document.getElementById('gtSpeed').value, 10);
+    if(!/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(mac)){ toast('Enter a valid MAC like AA:BB:CC:DD:EE:FF', 'bad'); return; }
+    if(!Number.isFinite(minutes) || minutes < 1){ toast('Enter a valid time', 'bad'); return; }
+    if(!Number.isFinite(speed) || speed < 1){ toast('Enter a speed in Mbps', 'bad'); return; }
+    try {
+      await api('/api/admin/sessions/' + encodeURIComponent(mac) + '/grant', {method:'POST', body: JSON.stringify({minutes, speedMbps: speed})});
+      await Promise.all([reloadSessions(), reloadOverview(), reloadDevices(), reloadLogs()]);
+      closeModals();
+      toast('Access granted to ' + mac);
+    } catch(err){ toast(err.message || 'Could not grant access', 'bad'); }
   });
 
   /* ---------------- payments ---------------- */
