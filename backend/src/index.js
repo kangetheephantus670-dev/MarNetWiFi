@@ -9,6 +9,7 @@ const mpesaWebhook = require('./routes/mpesaWebhook');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const usage = require('./services/usage');
 const expiry = require('./services/expiry');
+const payments = require('./services/payments');
 
 const app = express();
 
@@ -107,6 +108,10 @@ app.use('/api/mpesa', mpesaWebhook);
 app.use('/api/pay', mpesaWebhook);
 
 setInterval(() => expiry.sweep().catch(console.error), 60000);
+
+// Every 20s, ask Safaricom about payments still pending and settle them,
+// so a missed callback no longer leaves a customer stuck.
+setInterval(() => payments.sweepPending().catch(console.error), 20000);
 
 app.use(notFound);
 app.use(errorHandler);
