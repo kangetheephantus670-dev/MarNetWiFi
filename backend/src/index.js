@@ -57,6 +57,36 @@ app.get('/api/router/poll', async (req, res) => {
   }
 });
 
+// The router reports how many bytes each device has used (once a minute).
+// Body: one "MAC,bytes" line per hotspot user.
+app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), async (req, res) => {
+  if (!config.routerPollKey || req.query.key !== config.routerPollKey) {
+    return res.status(401).type('text/plain').send('unauthorized\n');
+  }
+  try {
+    const totals = {};
+    String(req.body || '').split('\n').forEach((line) => {
+      const parts = line.trim().split(',');
+      const mac = (parts[0] || '').toUpperCase();
+      const n = parseInt(parts[1], 10);
+      if (!MAC_RE.test(mac) || !n || n < 0) return;
+      totals[mac] = (totals[mac] || 0) + n;
+    });
+    for (const mac of Object.keys(totals)) {
+      const mb = Math.round(totals[mac] / 1048576);
+      await supabase
+        .from('sessions')
+        .update({ data_used_mb: mb })
+        .eq('mac', mac)
+        .eq('status', 'active');
+    }
+    res.type('text/plain').send('OK\n');
+  } catch (err) {
+    console.error('[marnet] usage report error', err);
+    res.status(500).type('text/plain').send('error\n');
+  }
+});
+
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mpesa', mpesaWebhook);
