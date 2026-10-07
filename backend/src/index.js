@@ -12,6 +12,11 @@ const expiry = require('./services/expiry');
 
 const app = express();
 
+// Render sits behind a proxy. Without this, every visitor looks like the
+// same IP to express-rate-limit, so the login and STK-push limits get
+// shared by ALL customers (and it logs the ERR_ERL_UNEXPECTED_X_FORWARDED_FOR error).
+app.set('trust proxy', 1);
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
@@ -85,6 +90,13 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
     console.error('[marnet] usage report error', err);
     res.status(500).type('text/plain').send('error\n');
   }
+});
+
+// Log every call Safaricom makes to us, so the Render logs show whether a
+// payment callback actually arrived (and what it contained).
+app.use(['/api/mpesa', '/api/pay'], (req, res, next) => {
+  console.log('[marnet] safaricom hit', req.method, req.originalUrl, JSON.stringify(req.body || {}).slice(0, 400));
+  next();
 });
 
 app.use('/api', publicRoutes);
