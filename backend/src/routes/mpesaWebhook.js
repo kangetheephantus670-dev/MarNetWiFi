@@ -1,12 +1,10 @@
 // Safaricom calls this URL directly (see MPESA_CALLBACK_URL) once a
 // payment is confirmed or fails — it does not go through either frontend.
-// This is the ONLY place a payment is ever marked confirmed; the client
-// portal just polls /api/status/:id and waits for that to happen here.
+// Payments are confirmed here, or by the background sweep in
+// services/payments.js if this callback never arrives.
 const express = require('express');
 const supabase = require('../supabaseClient');
-const mikrotik = require('../services/mikrotik');
-const { randomCode } = require('../utils/codes');
-const DURATION_MS = require('../utils/durations');
+const payments = require('../services/payments');
 
 const router = express.Router();
 
@@ -25,74 +23,19 @@ router.post('/callback', async (req, res) => {
       .select('*')
       .eq('checkout_request_id', stk.CheckoutRequestID)
       .maybeSingle();
-    if (!payment) return;
+    if (!payment) {
+      console.error('[marnet] callback for unknown CheckoutRequestID', stk.CheckoutRequestID);
+      return;
+    }
 
     if (stk.ResultCode !== 0) {
-      await supabase.from('payments').update({ status: 'failed' }).eq('id', payment.id);
-      await supabase.from('logs').insert({
-        event: 'Payment failed',
-        actor: 'system',
-        detail: payment.phone + ' · ' + (payment.plan_label || '') + ' · ' + stk.ResultDesc,
-      });
+      await payments.failPayment(payment, stk.ResultDesc);
       return;
     }
 
     const items = (stk.CallbackMetadata && stk.CallbackMetadata.Item) || [];
-    const get = (name) => {
-      const item = items.find((i) => i.Name === name);
-      return item ? item.Value : null;
-    };
-    const receipt = get('MpesaReceiptNumber');
-
-    const plan = payment.plan_id
-      ? (await supabase.from('plans').select('*').eq('id', payment.plan_id).maybeSingle()).data
-      : null;
-
-    const mac = payment.mac;
-    const password = randomCode('', 8);
-    const username = mac ? mac.replace(/:/g, '') : null;
-
-    if (mac) {
-      await mikrotik.provisionUser({
-        mac,
-        username,
-        password,
-        rateLimitMbps: plan ? plan.speed_mbps : undefined,
-      });
-    }
-
-    const ms = plan && DURATION_MS[plan.duration] ? DURATION_MS[plan.duration] : 60 * 60 * 1000;
-    const expiresAt = new Date(Date.now() + ms).toISOString();
-
-    await supabase.from('payments').update({
-      status: 'confirmed',
-      mpesa_receipt: receipt,
-      hotspot_username: username,
-      hotspot_password: password,
-    }).eq('id', payment.id);
-
-    if (mac) {
-      await supabase.from('sessions').insert({
-        mac,
-        plan_id: payment.plan_id,
-        started_at: new Date().toISOString(),
-        expires_at: expiresAt,
-        status: 'active',
-        hotspot_password: password,
-        speed_mbps: plan ? plan.speed_mbps : null,
-      });
-      await supabase.from('devices').upsert({
-        mac,
-        status: 'online',
-        last_seen: new Date().toISOString(),
-      });
-    }
-
-    await supabase.from('logs').insert({
-      event: 'Payment confirmed',
-      actor: 'system',
-      detail: payment.phone + ' · ' + (payment.plan_label || '') + ' · Ksh ' + payment.amount,
-    });
+    const item = items.find((i) => i.Name === 'MpesaReceiptNumber');
+    await payments.confirmPayment(payment, item ? item.Value : null);
   } catch (err) {
     // Safaricom already got its 200 above, so just log this — there's no
     // one left to respond to.
