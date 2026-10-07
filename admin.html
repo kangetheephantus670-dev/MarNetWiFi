@@ -472,7 +472,7 @@
       <div class="toolbar">
         <label class="search">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
-          <input id="sessionSearch" type="text" placeholder="Search MAC, voucher code">
+          <input id="sessionSearch" type="text" placeholder="Search phone, name, MAC or plan">
         </label>
         <div class="chips" id="sessionChips">
           <button class="chip active" data-filter="all">All</button>
@@ -1127,18 +1127,23 @@
   /* ---------------- sessions ---------------- */
   let sessionFilter = 'all', sessionQuery = '';
   function sessionClientLabel(s){
-    return s.customer_name || maskPhone(s.phone) || '—';
+    return s.customer_name || s.phone || '—';
+  }
+  // Name on top (if known) with the phone number underneath; just the phone otherwise.
+  function sessionClientCell(s){
+    if(s.customer_name && s.phone) return esc(s.customer_name) + '<span class="sub mono">' + esc(s.phone) + '</span>';
+    return esc(sessionClientLabel(s));
   }
   function renderSessions(){
     const body = document.getElementById('sessionBody');
     const rows = STATE.sessions.filter(s => {
       const mf = sessionFilter === 'all' || s.status === sessionFilter;
       const q = sessionQuery.toLowerCase();
-      const mq = !q || s.mac.toLowerCase().includes(q) || (s.plans && s.plans.duration.toLowerCase().includes(q)) || sessionClientLabel(s).toLowerCase().includes(q);
+      const mq = !q || s.mac.toLowerCase().includes(q) || (s.plans && s.plans.duration.toLowerCase().includes(q)) || sessionClientLabel(s).toLowerCase().includes(q) || (s.phone || '').includes(q) || (s.customer_name || '').toLowerCase().includes(q);
       return mf && mq;
     });
     body.innerHTML = rows.map(s =>
-      '<tr><td class="strong mono">' + esc(s.mac) + '</td><td>' + esc(sessionClientLabel(s)) + '</td><td>' + esc(s.plans ? s.plans.duration : '—') + '</td><td>' + esc(timeAgo(s.started_at)) + '</td><td>' + esc(s.status==='active' ? timeLeft(s.expires_at) : '—') + '</td><td>' + esc(formatMb(s.data_used_mb)) + '</td>' +
+      '<tr><td class="strong mono">' + esc(s.mac) + '</td><td>' + sessionClientCell(s) + '</td><td>' + esc(s.plans ? s.plans.duration : '—') + '</td><td>' + esc(timeAgo(s.started_at)) + '</td><td>' + esc(s.status==='active' ? timeLeft(s.expires_at) : '—') + '</td><td>' + esc(formatMb(s.data_used_mb)) + '</td>' +
       '<td><span class="pill ' + (s.status==='active'?'active':'expired') + '">' + s.status + '</span></td>' +
       '<td><div style="display:flex; gap:6px; flex-wrap:wrap;">' + (s.status==='active'
         ? '<button class="btn btn-danger btn-sm" data-disconnect="' + esc(s.mac) + '">Disconnect</button>' +
