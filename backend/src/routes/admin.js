@@ -211,6 +211,92 @@ router.post('/sessions/:mac/disconnect', requireAdmin, async (req, res, next) =>
   }
 });
 
+// "End plan": kick the device off AND cancel what's left of its package, so
+// the portal's Connect button / pasted code now say it has expired. Unlike
+// /disconnect above, which keeps the plan so the customer can come back.
+router.post('/sessions/:mac/expire', requireAdmin, async (req, res, next) => {
+  try {
+    const mac = String(req.params.mac).toUpperCase();
+    await mikrotik.removeUser(mac).catch(() => {});
+    await supabase
+      .from('sessions')
+      .update({ status: 'ended', expires_at: new Date().toISOString() })
+      .eq('mac', mac)
+      .eq('status', 'active');
+    await supabase.from('vouchers').update({ status: 'expired' }).eq('mac', mac).eq('status', 'active');
+    await supabase.from('devices').update({ status: 'offline' }).eq('mac', mac);
+    await supabase.from('logs').insert({
+      event: 'Plan ended',
+      actor: req.admin.sub,
+      detail: mac + ' (package expired by operator)',
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// "Grant time": give a device access for a chosen period at a chosen speed,
+// without a payment. Replaces any session the device currently has.
+router.post('/sessions/:mac/grant', requireAdmin, async (req, res, next) => {
+  try {
+    const mac = String(req.params.mac).toUpperCase();
+    if (!/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(mac)) {
+      return res.status(400).json({ error: 'Enter a valid MAC address' });
+    }
+    const minutes = parseInt((req.body || {}).minutes, 10);
+    const speed = parseInt((req.body || {}).speedMbps, 10);
+    if (!(minutes >= 1 && minutes <= 60 * 24 * 90)) {
+      return res.status(400).json({ error: 'Choose a time between 1 minute and 90 days' });
+    }
+    if (!(speed >= 1 && speed <= 1000)) {
+      return res.status(400).json({ error: 'Enter a speed in Mbps' });
+    }
+
+    const { data: device } = await supabase.from('devices').select('status').eq('mac', mac).maybeSingle();
+    if (device && device.status === 'blocked') {
+      return res.status(409).json({ error: 'That device is blocked. Unblock it first.' });
+    }
+
+    const now = new Date();
+    await supabase
+      .from('sessions')
+      .update({ status: 'ended', expires_at: now.toISOString() })
+      .eq('mac', mac)
+      .eq('status', 'active');
+
+    const password = randomCode('', 8);
+    await mikrotik.provisionUser({
+      mac,
+      username: mac.replace(/:/g, ''),
+      password,
+      rateLimitMbps: speed,
+    });
+
+    await supabase.from('sessions').insert({
+      mac,
+      started_at: now.toISOString(),
+      expires_at: new Date(now.getTime() + minutes * 60000).toISOString(),
+      status: 'active',
+      hotspot_password: password,
+      speed_mbps: speed,
+    });
+    await supabase.from('devices').upsert({
+      mac,
+      status: 'online',
+      last_seen: now.toISOString(),
+    });
+    await supabase.from('logs').insert({
+      event: 'Time granted',
+      actor: req.admin.sub,
+      detail: mac + ' · ' + minutes + ' min · ' + speed + ' Mbps',
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/payments', requireAdmin, async (req, res, next) => {
   try {
     const { data, error } = await supabase
