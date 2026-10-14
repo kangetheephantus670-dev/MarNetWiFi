@@ -1,8 +1,4 @@
-// The router calls this every ~20s. Returns plain text, one job per line:
-//   add,AA:BB:CC:DD:EE:FF,AABBCCDDEEFF,Pass1234,3
-//   remove,AA:BB:CC:DD:EE:FF
-// or just "OK" when there is nothing to do. Capped at 20 jobs per call
-// because RouterOS v6 can only read ~4 KB from a file.
+
 const express = require('express');
 const supabase = require('../supabaseClient');
 const config = require('../config');
