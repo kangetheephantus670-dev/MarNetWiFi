@@ -1,12 +1,4 @@
-// admin-auth.js — server-side admin authentication for MarNet WiFi (Express)
-//
-// Install:  npm i express helmet cors express-rate-limit jsonwebtoken bcryptjs
-//
-// Environment variables (set in Render > Environment, never in the repo):
-//   ADMIN_USER        e.g. "mark"
-//   ADMIN_PASS_HASH   bcrypt hash (generate with: node make-hash.js "your long passphrase")
-//   JWT_SECRET        64+ random chars (node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")
-//   ADMIN_ORIGIN      e.g. "https://kangetheephantus670-dev.github.io"  (origin only, no path)
+
 
 const express = require("express");
 const helmet = require("helmet");
@@ -20,12 +12,11 @@ if (!ADMIN_USER || !ADMIN_PASS_HASH || !JWT_SECRET || !ADMIN_ORIGIN) {
   throw new Error("Missing ADMIN_USER / ADMIN_PASS_HASH / JWT_SECRET / ADMIN_ORIGIN");
 }
 
-const TOKEN_TTL = "30m";        // short-lived session
-const MAX_FAILS = 3;            // failed sign-ins before lockout
-const LOCK_MS = 15 * 60 * 1000; // 15 minutes
+const TOKEN_TTL = "30m";        
+const MAX_FAILS = 3;            
+const LOCK_MS = 15 * 60 * 1000; 
 
-// --- lockout state (in memory; move to Supabase/Redis if you run >1 instance) ---
-const fails = new Map(); // key: ip -> { count, lockedUntil }
+const fails = new Map(); 
 
 function lockInfo(ip) {
   const rec = fails.get(ip);
@@ -47,12 +38,10 @@ function recordFail(ip) {
   fails.set(ip, rec);
 }
 
-// --- audit log: replace body with an insert into your Supabase `logs` table ---
 async function audit(event, actor, detail) {
   console.log(JSON.stringify({ t: new Date().toISOString(), event, actor, detail }));
 }
 
-// --- middleware: protects every /admin/* route except login ---
 function requireAdmin(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
@@ -70,14 +59,13 @@ const router = express.Router();
 router.use(helmet());
 router.use(
   cors({
-    origin: ADMIN_ORIGIN,            // only your admin page may call this
+    origin: ADMIN_ORIGIN,           
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 router.use(express.json({ limit: "10kb" }));
 
-// Extra network-level throttle on top of the lockout
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -97,7 +85,6 @@ router.post("/login", loginLimiter, async (req, res) => {
     return res.status(400).json({ error: "Invalid request" });
   }
 
-  // Always run bcrypt so response time doesn't reveal whether the username was right
   const passOk = await bcrypt.compare(password, ADMIN_PASS_HASH);
   const userOk = username === ADMIN_USER;
 
@@ -121,9 +108,7 @@ router.post("/logout", requireAdmin, async (req, res) => {
   res.json({ ok: true }); // client discards the token
 });
 
-// ---- Example protected routes: every admin action goes behind requireAdmin ----
 router.get("/overview", requireAdmin, async (req, res) => {
-  // TODO: query Supabase with the SERVICE key (server-side only)
   res.json({ revenue7d: [], online: [] });
 });
 
