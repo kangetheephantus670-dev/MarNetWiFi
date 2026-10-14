@@ -251,7 +251,10 @@
   .plan-card .price{font-size:22px; font-weight:800; margin:8px 0 2px; letter-spacing:-.01em;}
   .plan-card .price small{font-size:12px; font-weight:600; color:var(--muted);}
   .plan-card .devices{font-size:11.5px; color:var(--muted); border-top:1px dashed var(--line); margin-top:10px; padding-top:9px;}
+  .plan-card .speed{font-size:11.5px; color:var(--muted); margin-top:3px;}
+  .plan-card .speed b{color:var(--ink);}
   .plan-card .row-actions{display:flex; gap:6px; margin-top:12px;}
+  .pill.throttled{background:var(--warn-bg); color:var(--warn);}
   .plan-card.add{display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; border-style:dashed; color:var(--muted); cursor:pointer; min-height:150px;}
   .plan-card.add:hover{color:var(--ink); border-color:var(--ink);}
 
@@ -345,7 +348,9 @@
       <button id="suSubmit" class="btn btn-solid" style="width:100%; justify-content:center; padding:12px;">Sign in</button>
     </div>
 
-    <a class="back-link" href="https://marnetwifi.github.io/login/index.html" id="backToPortal">← Back to captive portal</a>
+  
+
+    <a class="back-link" href="marnetwifi.github.io/login" id="backToPortal">← Back to captive portal</a>
   </div>
 </div>
 
@@ -456,11 +461,14 @@
           </button>
           <div><p class="eyebrow">MarNet WiFi</p><h1>Sessions</h1></div>
         </div>
+        <div class="actions">
+          <button class="btn btn-solid" id="openGrant">Grant time</button>
+        </div>
       </div>
       <div class="toolbar">
         <label class="search">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
-          <input id="sessionSearch" type="text" placeholder="Search MAC, voucher code">
+          <input id="sessionSearch" type="text" placeholder="Search phone, name, MAC or plan">
         </label>
         <div class="chips" id="sessionChips">
           <button class="chip active" data-filter="all">All</button>
@@ -470,7 +478,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Device (MAC)</th><th>Plan</th><th>Started</th><th>Time left</th><th>Data used</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Device (MAC)</th><th>Client</th><th>Plan</th><th>Started</th><th>Time left</th><th>Data used</th><th>Status</th><th></th></tr></thead>
           <tbody id="sessionBody"></tbody>
         </table>
       </div>
@@ -500,8 +508,18 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Time</th><th>Phone</th><th>Plan</th><th>Amount</th><th>Status</th><th>Voucher</th></tr></thead>
+          <thead><tr><th>Time</th><th>Name</th><th>Phone</th><th>Plan</th><th>Amount</th><th>Status</th><th>Voucher</th></tr></thead>
           <tbody id="paymentBody"></tbody>
+        </table>
+      </div>
+
+      <div class="topbar" style="margin-top:28px;">
+        <div><p class="eyebrow">Till payments (no STK)</p><h2 style="margin:2px 0 0; font-size:16px;">M-Pesa codes clients pasted in directly</h2></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Code</th><th>Name</th><th>Phone</th><th>Amount</th><th>Redeemed?</th><th>Bound MAC</th></tr></thead>
+          <tbody id="receiptBody"></tbody>
         </table>
       </div>
     </section>
@@ -529,7 +547,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>MAC address</th><th>Status</th><th>Last plan</th><th>Voucher guesses</th><th>Last seen</th><th></th></tr></thead>
+          <thead><tr><th>MAC address</th><th>Status</th><th>Last plan</th><th>Speed</th><th>Voucher guesses</th><th>Last seen</th><th></th></tr></thead>
           <tbody id="deviceBody"></tbody>
         </table>
       </div>
@@ -572,7 +590,7 @@
           <div><p class="eyebrow">MarNet WiFi</p><h1>Plans</h1></div>
         </div>
       </div>
-      <p class="panel-sub" style="margin-bottom:16px;">These are the packages shown on the captive portal. Changes here take effect the next time a client opens the page.</p>
+      <p class="panel-sub" style="margin-bottom:16px;">These are the packages shown on the captive portal. Changes here take effect the next time a client opens the page. Speed limits are enforced on the router and never shown to clients.</p>
       <div class="plan-grid" id="planGrid"></div>
     </section>
 
@@ -593,14 +611,14 @@
           <h2>MikroTik router</h2>
           <p class="desc">Connection details for the router that creates hotspot users once a client pays or redeems a voucher.</p>
           <div class="form-grid">
-            <div class="field"><label>Router address</label><input type="text" placeholder="192.168.88.1"></div>
-            <div class="field"><label>API port</label><input type="text" placeholder="8728"></div>
-            <div class="field"><label>API username</label><input type="text" placeholder="marnet-api"></div>
-            <div class="field"><label>API password</label><input type="password" placeholder="••••••••"></div>
+            <div class="field"><label>Router address</label><input type="text" id="mtHost" placeholder="192.168.88.1"></div>
+            <div class="field"><label>API port</label><input type="text" id="mtPort" placeholder="8728"></div>
+            <div class="field"><label>API username</label><input type="text" id="mtUser" placeholder="marnet-api"></div>
+            <div class="field"><label>API password</label><input type="password" id="mtPass" placeholder="••••••••"></div>
           </div>
           <div class="foot-row">
-            <span class="status-line"><span class="dot good" style="margin-top:0;"></span>Not connected — placeholder only</span>
-            <button class="btn btn-ghost btn-sm">Test connection</button>
+            <span class="status-line" id="mtStatus"><span class="dot warn" style="margin-top:0;"></span>Not connected — placeholder only</span>
+            <button class="btn btn-ghost btn-sm" id="mtTestBtn">Test connection</button>
           </div>
         </div>
 
@@ -608,13 +626,17 @@
           <h2>M-Pesa / payments</h2>
           <p class="desc">Till or paybill used for STK push prompts on the captive portal.</p>
           <div class="form-grid">
-            <div class="field"><label>Paybill / Till number</label><input type="text" placeholder="400200"></div>
-            <div class="field"><label>Account reference</label><input type="text" placeholder="MARNET"></div>
-            <div class="field full"><label>Daraja consumer key</label><input type="text" placeholder="••••••••••••••••"></div>
+            <div class="field"><label>Paybill / Till number</label><input type="text" id="mpTill" placeholder="400200"></div>
+            <div class="field"><label>Account reference</label><input type="text" id="mpRef" placeholder="MARNET"></div>
+            <div class="field full"><label>Daraja consumer key</label><input type="text" id="mpKey" placeholder="••••••••••••••••"></div>
           </div>
           <div class="foot-row">
             <span class="status-line">Sandbox mode</span>
-            <button class="btn btn-ghost btn-sm">Save</button>
+            <button class="btn btn-ghost btn-sm" id="mpSaveBtn">Save</button>
+          </div>
+          <div class="foot-row">
+            <span class="status-line" id="c2bStatus"><span class="dot warn" style="margin-top:0;"></span>Lets clients pay the Till directly and paste the code — one-time setup</span>
+            <button class="btn btn-ghost btn-sm" id="c2bRegisterBtn">Register M-Pesa C2B URL</button>
           </div>
         </div>
 
@@ -622,12 +644,12 @@
           <h2>Database</h2>
           <p class="desc">Vouchers, sessions, payments and logs are stored in Supabase. This console currently shows placeholder data — connect a project to make it live.</p>
           <div class="form-grid">
-            <div class="field full"><label>Supabase project URL</label><input type="text" placeholder="https://xxxxxxxx.supabase.co"></div>
-            <div class="field full"><label>Supabase anon key</label><input type="password" placeholder="••••••••••••••••"></div>
+            <div class="field full"><label>Supabase project URL</label><input type="text" id="sbUrl" placeholder="https://xxxxxxxx.supabase.co"></div>
+            <div class="field full"><label>Supabase anon key</label><input type="password" id="sbKey" placeholder="••••••••••••••••"></div>
           </div>
           <div class="foot-row">
-            <span class="status-line"><span class="dot warn" style="margin-top:0;"></span>Using placeholder data, not connected</span>
-            <button class="btn btn-ghost btn-sm">Connect</button>
+            <span class="status-line" id="sbStatus"><span class="dot warn" style="margin-top:0;"></span>Using placeholder data, not connected</span>
+            <button class="btn btn-ghost btn-sm" id="sbConnectBtn">Connect</button>
           </div>
         </div>
 
@@ -635,8 +657,8 @@
           <h2>Backend</h2>
           <p class="desc">The captive portal wakes the backend by pinging it as soon as a client opens the page, since the API is hosted on a free instance that sleeps after 15 minutes of inactivity.</p>
           <div class="foot-row">
-            <span class="status-line"><span class="dot good" style="margin-top:0;"></span>Backend awake — last ping just now</span>
-            <button class="btn btn-ghost btn-sm">Ping now</button>
+            <span class="status-line" id="beStatus"><span class="dot warn" style="margin-top:0;"></span>Not checked yet</span>
+            <button class="btn btn-ghost btn-sm" id="bePingBtn">Ping now</button>
           </div>
         </div>
 
@@ -661,8 +683,8 @@
           <h2>Operator account</h2>
           <p class="desc">Update the credentials used to sign in to this console.</p>
           <div class="form-grid">
-            <div class="field"><label>Username</label><input id="acctUsername" type="text" value="operator" disabled></div>
-            <div class="field"><label>New password</label><input id="acctNewPassword" type="password" placeholder="Leave blank to keep current"></div>
+            <div class="field"><label>Username</label><input type="text" id="acctUsername" value="operator" disabled></div>
+            <div class="field"><label>New password</label><input type="password" id="acctNewPass" placeholder="Leave blank to keep current"></div>
           </div>
           <div class="foot-row">
             <span class="status-line" id="acctStatus">Last sign-in: just now</span>
@@ -719,6 +741,58 @@
     </div>
   </div>
 
+  <div class="modal" id="editPlanModal" style="display:none;">
+    <button class="close" data-close-modal aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <h3 id="epTitle">Edit plan</h3>
+    <p>Speed limits are enforced on the router and are never shown to the client.</p>
+    <div class="field"><label>Price (Ksh)</label><input type="number" id="epPrice" min="0"></div>
+    <div class="field"><label>Devices allowed</label><input type="text" id="epDevices" placeholder="e.g. 1 device"></div>
+    <div class="field"><label>Speed limit (Mbps)</label><input type="number" id="epSpeed" min="1"></div>
+    <div class="modal-actions">
+      <button class="btn btn-solid" id="epSubmit" style="flex:1; justify-content:center;">Save plan</button>
+      <button class="btn btn-ghost" data-close-modal>Cancel</button>
+    </div>
+  </div>
+
+  <div class="modal" id="deviceSpeedModal" style="display:none;">
+    <button class="close" data-close-modal aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <h3>Throttle device</h3>
+    <p id="dsDeviceLabel">Limits this device's speed below its plan, regardless of what it paid for. Useful if you suspect it's sharing its connection — the device is never told.</p>
+    <div class="field"><label>Speed limit (Mbps)</label><input type="number" id="dsSpeed" min="1" placeholder="e.g. 2"></div>
+    <div class="modal-actions">
+      <button class="btn btn-solid" id="dsSubmit" style="flex:1; justify-content:center;">Apply limit</button>
+      <button class="btn btn-ghost" id="dsRemove">Remove limit</button>
+    </div>
+  </div>
+
+  <div class="modal" id="grantModal" style="display:none;">
+    <button class="close" data-close-modal aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <h3>Grant time</h3>
+    <p>Give a device access for a set period at a speed you choose. No payment needed. It replaces any plan the device has now.</p>
+    <div class="field"><label>Device MAC</label><input type="text" id="gtMac" placeholder="AA:BB:CC:DD:EE:FF"></div>
+    <div class="field"><label>Time</label>
+      <div style="display:flex; gap:8px;">
+        <input type="number" id="gtAmount" min="1" value="1" style="flex:1;">
+        <select id="gtUnit" style="flex:1;">
+          <option value="1">Minutes</option>
+          <option value="60" selected>Hours</option>
+          <option value="1440">Days</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Speed (Mbps)</label><input type="number" id="gtSpeed" min="1" placeholder="e.g. 5"></div>
+    <div class="modal-actions">
+      <button class="btn btn-solid" id="gtSubmit" style="flex:1; justify-content:center;">Grant access</button>
+      <button class="btn btn-ghost" data-close-modal>Cancel</button>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"><span class="dot good"></span><span id="toastMsg"></span></div>
@@ -728,41 +802,12 @@
   "use strict";
 
   /* ============================================================
-     API CLIENT — real backend, used by sign-in / sign-out / account.
-     The rest of this file (vouchers, sessions, payments, etc.) still
-     runs on placeholder data below; only auth talks to the real API.
+     Real backend wiring. Every render function below is fed from
+     STATE, which is populated by loadAll()/reload*() calls against
+     the actual /api/admin/* routes — there is no mock data left.
   ============================================================ */
-  const API_BASE = "https://marnetwifi.onrender.com";
-  function getToken(){ return sessionStorage.getItem('marnetAdminToken') || ''; }
-  function setToken(t){ if(t) sessionStorage.setItem('marnetAdminToken', t); else sessionStorage.removeItem('marnetAdminToken'); }
 
-  function api(path, opts){
-    opts = opts || {};
-    const headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
-    const token = getToken();
-    if(token) headers.Authorization = 'Bearer ' + token;
-    return fetch(API_BASE + path, Object.assign({}, opts, {headers}))
-      .then(function(res){
-        return res.json().catch(function(){ return {}; }).then(function(body){
-          if(!res.ok) throw new Error(body.error || 'Unknown error. Please try again.');
-          return body;
-        });
-      });
-  }
-  function apiPost(path, data){ return api(path, {method:'POST', body: JSON.stringify(data || {})}); }
-  function apiPatch(path, data){ return api(path, {method:'PATCH', body: JSON.stringify(data || {})}); }
-  function apiGet(path){ return api(path, {method:'GET'}); }
-
-  /* ============================================================
-     PLACEHOLDER DATA
-     Every array below stands in for a Supabase table. Swap the
-     mock arrays for real queries once the project is connected —
-     each render function is written so the data shape is all that
-     matters, e.g.:
-       const { data } = await supabase.from('vouchers').select('*');
-     and each action (create/revoke/block/etc.) is where the matching
-     insert/update/delete call belongs.
-  ============================================================ */
+  const BACKEND_URL = "https://marnetwifi.onrender.com"; // TODO: confirm once backend is live
 
   const icons = {
     overview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>',
@@ -786,96 +831,63 @@
     {id:'settings', label:'Settings'}
   ];
 
-  const DB = {
-    stats: { today:53, online:5, unusedCodes:5, attention:2 },
-
-    revenue7d: [
-      {d:'Thu', v:2}, {d:'Fri', v:4}, {d:'Sat', v:8}, {d:'Sun', v:132},
-      {d:'Mon', v:25}, {d:'Tue', v:0}, {d:'Wed', v:0}
-    ],
-
-    activity: [
-      {kind:'good', title:'Operator signed in', meta:'Just now · operator'},
-      {kind:'good', title:'Device still online', meta:'4m ago · A4:C3:F0:12:8B:21 · 12 hrs remaining'},
-      {kind:'warn', title:'STK push queued', meta:'6m ago · 24 hrs · Ksh 25'},
-      {kind:'good', title:'Voucher H2B6N8QS redeemed', meta:'1h ago · Bound to AC:DE:48:00:11:22'},
-      {kind:'warn', title:'Payment did not complete', meta:'2h ago · 3 hrs plan'},
-      {kind:'bad', title:'Voucher guesses locked', meta:'3h ago · MAC DC:A6:32:08:4E:77 reached 10 attempts'},
-      {kind:'good', title:'Voucher K7N2P9QH redeemed', meta:'7h ago · Bound to A4:C3:F0:12:8B:21'}
-    ],
-
-    plans: [
-      {id:'p30m', d:'30 min', p:5, popular:false, devices:'1 device'},
-      {id:'p1h', d:'1 hr', p:8, popular:false, devices:'1 device'},
-      {id:'p12h', d:'12 hrs', p:20, popular:true, devices:'1 device'},
-      {id:'p3h', d:'3 hrs', p:10, popular:false, devices:'1 device'},
-      {id:'p24h', d:'24 hrs', p:25, popular:true, devices:'1 device'},
-      {id:'p3d', d:'3 days', p:55, popular:false, devices:'1 device'},
-      {id:'p1w', d:'1 week', p:135, popular:false, devices:'1 device'},
-      {id:'p2w', d:'2 weeks', p:270, popular:false, devices:'1 device'},
-      {id:'p1mo', d:'1 month', p:579, popular:false, devices:'1 device'},
-      {id:'p1mo2d', d:'1 month', p:900, popular:false, devices:'2 devices'}
-    ],
-
-    vouchers: [
-      {code:'MNEGJVJH', plan:'QA pack', status:'unused', mac:null, created:'16 Sept, 15:42'},
-      {code:'MNEKZ9VA', plan:'QA pack', status:'unused', mac:null, created:'16 Sept, 15:42'},
-      {code:'MNFR5BJJ', plan:'QA pack', status:'unused', mac:null, created:'16 Sept, 15:42'},
-      {code:'DEMO1234', plan:'Counter sample', status:'unused', mac:null, created:'13 Sept, 15:42'},
-      {code:'K7N2P9QH', plan:'12 hrs · Ksh 20', status:'active', mac:'A4:C3:F0:12:8B:21', created:'16 Sept, 07:42'},
-      {code:'M3W8R2TY', plan:'24 hrs · Ksh 25', status:'active', mac:'3C:22:FB:90:11:6A', created:'16 Sept, 05:42'},
-      {code:'P4X9C1LM', plan:'1 hr · Ksh 8', status:'expired', mac:'F0:9F:C2:44:01:9C', created:'15 Sept, 15:42'},
-      {code:'H2B6N8QS', plan:'3 hrs · Ksh 10', status:'active', mac:'AC:DE:48:00:11:22', created:'16 Sept, 13:42'},
-      {code:'DC7T4WQ2', plan:'1 hr · Ksh 8', status:'blocked', mac:'DC:A6:32:08:4E:77', created:'14 Sept, 09:10'}
-    ],
-
-    sessions: [
-      {mac:'A4:C3:F0:12:8B:21', plan:'12 hrs', started:'4m ago', left:'12 hrs remaining', data:'18 MB', status:'active'},
-      {mac:'3C:22:FB:90:11:6A', plan:'24 hrs', started:'2h ago', left:'22 hrs remaining', data:'340 MB', status:'active'},
-      {mac:'AC:DE:48:00:11:22', plan:'3 hrs', started:'1h ago', left:'2 hrs remaining', data:'96 MB', status:'active'},
-      {mac:'DE:11:9A:02:5F:41', plan:'1 week', started:'2 days ago', left:'5 days remaining', data:'1.2 GB', status:'active'},
-      {mac:'B8:27:EB:44:9C:03', plan:'30 min', started:'Yesterday', left:'—', data:'6 MB', status:'ended'},
-      {mac:'F0:9F:C2:44:01:9C', plan:'1 hr', started:'15 Sept, 15:00', left:'—', data:'12 MB', status:'ended'}
-    ],
-
-    payments: [
-      {time:'Just now', phone:'07•• ••• 214', plan:'24 hrs', amount:25, status:'pending', voucher:'—'},
-      {time:'6m ago', phone:'07•• ••• 908', plan:'24 hrs', amount:25, status:'pending', voucher:'—'},
-      {time:'1h ago', phone:'07•• ••• 552', plan:'3 hrs', amount:10, status:'confirmed', voucher:'H2B6N8QS'},
-      {time:'2h ago', phone:'01•• ••• 337', plan:'3 hrs', amount:10, status:'failed', voucher:'—'},
-      {time:'5h ago', phone:'07•• ••• 019', plan:'12 hrs', amount:20, status:'confirmed', voucher:'K7N2P9QH'},
-      {time:'16 Sept, 05:42', phone:'07•• ••• 661', plan:'24 hrs', amount:25, status:'confirmed', voucher:'M3W8R2TY'},
-      {time:'15 Sept, 15:42', phone:'07•• ••• 240', plan:'1 hr', amount:8, status:'confirmed', voucher:'P4X9C1LM'}
-    ],
-
-    devices: [
-      {mac:'A4:C3:F0:12:8B:21', status:'online', plan:'12 hrs', guesses:0, seen:'Just now'},
-      {mac:'3C:22:FB:90:11:6A', status:'online', plan:'24 hrs', guesses:0, seen:'2m ago'},
-      {mac:'AC:DE:48:00:11:22', status:'online', plan:'3 hrs', guesses:0, seen:'6m ago'},
-      {mac:'DE:11:9A:02:5F:41', status:'online', plan:'1 week', guesses:1, seen:'11m ago'},
-      {mac:'DC:A6:32:08:4E:77', status:'blocked', plan:'—', guesses:10, seen:'3h ago'},
-      {mac:'B8:27:EB:44:9C:03', status:'offline', plan:'30 min', guesses:0, seen:'Yesterday'},
-      {mac:'F0:9F:C2:44:01:9C', status:'offline', plan:'1 hr', guesses:2, seen:'15 Sept'}
-    ],
-
-    logs: [
-      {time:'Just now', event:'Operator signed in', actor:'operator', detail:'From console'},
-      {time:'4m ago', event:'STK push queued', actor:'system', detail:'0722•••214 · 24 hrs · Ksh 25'},
-      {time:'1h ago', event:'Voucher redeemed', actor:'system', detail:'H2B6N8QS bound to AC:DE:48:00:11:22'},
-      {time:'2h ago', event:'Payment failed', actor:'system', detail:'0111•••337 · 3 hrs plan · timed out'},
-      {time:'3h ago', event:'Device blocked', actor:'system', detail:'DC:A6:32:08:4E:77 reached 10 voucher guesses'},
-      {time:'16 Sept, 07:42', event:'Voucher created', actor:'operator', detail:'K7N2P9QH · 12 hrs · note: Morning print run'},
-      {time:'16 Sept, 05:42', event:'Voucher redeemed', actor:'system', detail:'M3W8R2TY bound to 3C:22:FB:90:11:6A'},
-      {time:'15 Sept, 15:42', event:'Voucher created', actor:'operator', detail:'P4X9C1LM · 1 hr'}
-    ]
+  // Populated entirely from the backend — see loadAll() near the bottom.
+  const STATE = {
+    stats: { todayKsh:0, online:0, unusedCodes:0, needsAttention:0 },
+    revenue7d: [],
+    plans: [],
+    vouchers: [],
+    sessions: [],
+    payments: [],
+    receipts: [],
+    devices: [],
+    logs: []
   };
 
-  let voucherSeq = 100;
-
   /* ---------------- helpers ---------------- */
-  function ksh(n){ return 'Ksh ' + n.toLocaleString(); }
+  function ksh(n){ return 'Ksh ' + (n||0).toLocaleString(); }
   function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
-  function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+  function timeAgo(iso){
+    if(!iso) return '—';
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if(mins < 1) return 'Just now';
+    if(mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if(hrs < 24) return hrs + 'h ago';
+    const days = Math.floor(hrs / 24);
+    if(days < 2) return 'Yesterday';
+    return fmtDateTime(iso);
+  }
+  function fmtDateTime(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {day:'numeric', month:'short'}) + ', ' +
+      d.toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'});
+  }
+  function timeLeft(iso){
+    if(!iso) return '—';
+    const diff = new Date(iso).getTime() - Date.now();
+    if(diff <= 0) return 'Expired';
+    const mins = Math.floor(diff / 60000);
+    if(mins < 60) return mins + ' min remaining';
+    const hrs = Math.floor(mins / 60);
+    if(hrs < 24) return hrs + ' hrs remaining';
+    const days = Math.floor(hrs / 24);
+    return days + ' day' + (days===1?'':'s') + ' remaining';
+  }
+  function formatMb(mb){
+    mb = mb || 0;
+    if(mb >= 1024) return (Math.round(mb/1024*10)/10) + ' GB';
+    return mb + ' MB';
+  }
+  function maskPhone(p){
+    if(!p) return '—';
+    const s = String(p);
+    return s.length > 6 ? s.slice(0,4) + '••••' + s.slice(-3) : s;
+  }
 
   let toastTimer = null;
   function toast(msg, kind){
@@ -885,6 +897,32 @@
     t.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  /* ---------------- backend calls ---------------- */
+  function authHeaders(){
+    const t = sessionStorage.getItem('mn_admin_token');
+    return t ? {'Authorization': 'Bearer ' + t} : {};
+  }
+  async function api(path, opts){
+    opts = opts || {};
+    const headers = Object.assign({'Content-Type':'application/json'}, authHeaders(), opts.headers || {});
+    const res = await fetch(BACKEND_URL + path, Object.assign({}, opts, {headers}));
+    let data = null;
+    try { data = await res.json(); } catch(e){ /* no body */ }
+    if(!res.ok){
+      const err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return data || {};
+  }
+  function withTimeout(promise, ms){
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ]);
   }
 
   /* ---------------- sidebar nav ---------------- */
@@ -916,10 +954,10 @@
     const g = document.getElementById('statGrid');
     g.innerHTML = '';
     const cards = [
-      {label:'Today', value: ksh(DB.stats.today), sub:'Confirmed M-Pesa'},
-      {label:'Online', value: DB.stats.online, sub:'Active sessions'},
-      {label:'Unused codes', value: DB.stats.unusedCodes, sub:'Ready to sell'},
-      {label:'Attention', value: DB.stats.attention, sub:'Failed pays + blocked MACs', attn:true}
+      {label:'Today', value: ksh(STATE.stats.todayKsh), sub:'Confirmed M-Pesa'},
+      {label:'Online', value: STATE.stats.online, sub:'Active sessions'},
+      {label:'Unused codes', value: STATE.stats.unusedCodes, sub:'Ready to sell'},
+      {label:'Attention', value: STATE.stats.needsAttention, sub:'Failed pays + blocked MACs', attn: STATE.stats.needsAttention > 0}
     ];
     cards.forEach(c => {
       const card = el('div', 'stat-card' + (c.attn ? ' attn' : ''),
@@ -932,10 +970,10 @@
 
   function renderChart(){
     const wrap = document.getElementById('chartWrap');
-    const data = DB.revenue7d;
+    const data = STATE.revenue7d.length ? STATE.revenue7d : [{d:'—',v:0}];
     const w = 560, h = 210, padL = 30, padB = 24, padT = 14, padR = 8;
     const max = Math.max(...data.map(p => p.v), 10);
-    const stepX = (w - padL - padR) / (data.length - 1);
+    const stepX = data.length > 1 ? (w - padL - padR) / (data.length - 1) : 0;
     const yFor = v => padT + (h - padT - padB) * (1 - v / max);
     const pts = data.map((p,i) => [padL + i*stepX, yFor(p.v)]);
     const line = pts.map((p,i) => (i===0?'M':'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
@@ -959,47 +997,58 @@
         '<path d="' + area + '" fill="var(--accent)" opacity="0.14"/>' +
         '<path d="' + line + '" fill="none" stroke="var(--ink)" stroke-width="2"/>' +
         pts.map(p => '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="2.4" fill="var(--ink)"/>').join('') +
-        '<circle cx="'+marker[0]+'" cy="'+marker[1]+'" r="4" fill="var(--accent-deep)"/>' +
+        (marker ? '<circle cx="'+marker[0]+'" cy="'+marker[1]+'" r="4" fill="var(--accent-deep)"/>' : '') +
         labels +
       '</svg>' +
       '<p style="font-size:12px; color:var(--muted); margin:10px 0 0;">Peak day — ' + data[peakIdx].d + ': ' + ksh(data[peakIdx].v) + '</p>';
   }
 
+  function activityKind(event){
+    const e = (event || '').toLowerCase();
+    if(e.includes('fail') || e.includes('block') || e.includes('lock')) return 'bad';
+    if(e.includes('queued') || e.includes('pending')) return 'warn';
+    return 'good';
+  }
   function renderActivity(){
     const list = document.getElementById('activityList');
-    list.innerHTML = DB.activity.map(a =>
-      '<li><span class="dot ' + a.kind + '"></span><div><div class="a-title">' + esc(a.title) + '</div><div class="a-meta">' + esc(a.meta) + '</div></div></li>'
-    ).join('');
+    const rows = STATE.logs.slice(0, 8);
+    list.innerHTML = rows.map(l =>
+      '<li><span class="dot ' + activityKind(l.event) + '"></span><div><div class="a-title">' + esc(l.event) + '</div><div class="a-meta">' + esc(timeAgo(l.created_at)) + ' · ' + esc(l.detail || l.actor) + '</div></div></li>'
+    ).join('') || '<li><div class="a-meta">No activity yet.</div></li>';
   }
 
   function renderOnlineNow(){
     const body = document.getElementById('onlineNowBody');
-    const rows = DB.sessions.filter(s => s.status === 'active');
+    const rows = STATE.sessions.filter(s => s.status === 'active');
     body.innerHTML = rows.map(s =>
-      '<tr><td class="strong mono">' + s.mac + '</td><td>' + s.plan + '</td><td>' + s.left + '</td><td>' + s.data + '</td>' +
-      '<td><button class="btn btn-danger btn-sm" data-disconnect="' + s.mac + '">Disconnect</button></td></tr>'
+      '<tr><td class="strong mono">' + esc(s.mac) + '</td><td>' + esc(s.plans ? s.plans.duration : '—') + '</td><td>' + esc(timeLeft(s.expires_at)) + '</td><td>' + esc(formatMb(s.data_used_mb)) + '</td>' +
+      '<td><button class="btn btn-danger btn-sm" data-disconnect="' + esc(s.mac) + '">Disconnect</button></td></tr>'
     ).join('') || '<tr><td colspan="5"><div class="empty">No devices online right now.</div></td></tr>';
   }
 
   /* ---------------- vouchers ---------------- */
   let voucherFilter = 'all', voucherQuery = '';
+  function voucherPlanLabel(v){
+    if(v.plans) return v.plans.duration + ' · ' + ksh(v.plans.price) + (v.note ? ' — ' + v.note : '');
+    return v.note || '—';
+  }
   function renderVouchers(){
     const body = document.getElementById('voucherBody');
-    const rows = DB.vouchers.filter(v => {
+    const rows = STATE.vouchers.filter(v => {
       const matchesFilter = voucherFilter === 'all' || v.status === voucherFilter;
       const q = voucherQuery.toLowerCase();
-      const matchesQuery = !q || v.code.toLowerCase().includes(q) || (v.mac||'').toLowerCase().includes(q) || v.plan.toLowerCase().includes(q);
+      const matchesQuery = !q || v.code.toLowerCase().includes(q) || (v.mac||'').toLowerCase().includes(q) || voucherPlanLabel(v).toLowerCase().includes(q);
       return matchesFilter && matchesQuery;
     });
     body.innerHTML = rows.map(v =>
-      '<tr><td class="strong mono">' + v.code + '</td>' +
-      '<td>' + esc(v.plan) + '</td>' +
+      '<tr><td class="strong mono">' + esc(v.code) + '</td>' +
+      '<td>' + esc(voucherPlanLabel(v)) + '</td>' +
       '<td><span class="pill ' + v.status + '">' + v.status + '</span></td>' +
-      '<td class="mono">' + (v.mac || '—') + '</td>' +
-      '<td>' + v.created + '</td>' +
-      '<td>' + (v.status === 'blocked' ? '<button class="btn btn-ghost btn-sm" data-unblock-voucher="' + v.code + '">Unblock</button>' :
+      '<td class="mono">' + esc(v.mac || '—') + '</td>' +
+      '<td>' + esc(fmtDateTime(v.created_at)) + '</td>' +
+      '<td>' + (v.status === 'blocked' ? '<button class="btn btn-ghost btn-sm" data-unblock-voucher="' + esc(v.code) + '">Unblock</button>' :
                 v.status === 'expired' ? '' :
-                '<button class="btn btn-danger btn-sm" data-revoke="' + v.code + '">Revoke</button>') + '</td></tr>'
+                '<button class="btn btn-danger btn-sm" data-revoke="' + esc(v.code) + '">Revoke</button>') + '</td></tr>'
     ).join('') || '<tr><td colspan="6"><div class="empty"><b>No vouchers match</b>Try a different search or filter.</div></td></tr>';
   }
 
@@ -1012,23 +1061,24 @@
     voucherFilter = chip.dataset.filter;
     renderVouchers();
   });
-  document.getElementById('voucherBody').addEventListener('click', e => {
+  document.getElementById('voucherBody').addEventListener('click', async e => {
     const revoke = e.target.closest('[data-revoke]');
     const unblock = e.target.closest('[data-unblock-voucher]');
     if(revoke){
       const code = revoke.dataset.revoke;
-      // TODO: await supabase.from('vouchers').update({status:'expired'}).eq('code', code)
-      const v = DB.vouchers.find(x => x.code === code);
-      if(v){ v.status = 'expired'; }
-      renderVouchers();
-      toast('Voucher ' + code + ' revoked', 'bad');
+      try {
+        await api('/api/admin/vouchers/' + encodeURIComponent(code), {method:'PATCH', body: JSON.stringify({action:'revoke'})});
+        await reloadVouchers(); await reloadOverview();
+        toast('Voucher ' + code + ' revoked', 'bad');
+      } catch(err){ toast(err.message || 'Could not revoke that voucher', 'bad'); }
     }
     if(unblock){
       const code = unblock.dataset.unblockVoucher;
-      const v = DB.vouchers.find(x => x.code === code);
-      if(v){ v.status = 'unused'; v.mac = null; }
-      renderVouchers();
-      toast('Voucher ' + code + ' unblocked');
+      try {
+        await api('/api/admin/vouchers/' + encodeURIComponent(code), {method:'PATCH', body: JSON.stringify({action:'unblock'})});
+        await reloadVouchers();
+        toast('Voucher ' + code + ' unblocked');
+      } catch(err){ toast(err.message || 'Could not unblock that voucher', 'bad'); }
     }
   });
 
@@ -1043,58 +1093,60 @@
   document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', closeModals));
 
   const cvPlan = document.getElementById('cvPlan');
-  cvPlan.innerHTML = DB.plans.map(p => '<option value="' + p.id + '">' + p.d + ' · ' + ksh(p.p) + '</option>').join('');
+  function renderCvPlanOptions(){
+    cvPlan.innerHTML = STATE.plans.map(p => '<option value="' + p.id + '">' + p.duration + ' · ' + ksh(p.price) + '</option>').join('');
+  }
 
   document.getElementById('openCreateVoucher').addEventListener('click', () => openModal(createVoucherModal));
 
-  function randomCode(){
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let out = 'MN';
-    for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
-    return out;
-  }
-
-  document.getElementById('cvSubmit').addEventListener('click', () => {
-    const plan = DB.plans.find(p => p.id === cvPlan.value);
+  document.getElementById('cvSubmit').addEventListener('click', async () => {
+    const planId = cvPlan.value;
     const count = Math.max(1, Math.min(20, parseInt(document.getElementById('cvCount').value, 10) || 1));
     const note = document.getElementById('cvNote').value.trim();
-    const codes = [];
-    for(let i=0;i<count;i++){
-      const code = randomCode();
-      codes.push(code);
-      // TODO: await supabase.from('vouchers').insert({code, plan: plan.d, status:'unused', note})
-      DB.vouchers.unshift({code, plan: plan.d + ' · ' + ksh(plan.p) + (note ? ' — ' + note : ''), status:'unused', mac:null, created:'Just now'});
-    }
-    DB.stats.unusedCodes += count;
-    renderStats();
-    renderVouchers();
-    document.getElementById('vrCodes').textContent = codes.join('\n');
-    openModal(vouchersReadyModal);
+    if(!planId){ toast('Choose a plan first', 'bad'); return; }
+    try {
+      const result = await api('/api/admin/vouchers', {method:'POST', body: JSON.stringify({planId, count, note})});
+      await reloadVouchers(); await reloadOverview();
+      document.getElementById('vrCodes').textContent = (result.codes || []).join('\n');
+      openModal(vouchersReadyModal);
+    } catch(err){ toast(err.message || 'Could not create vouchers', 'bad'); }
   });
 
   document.getElementById('vrCopy').addEventListener('click', () => {
     const text = document.getElementById('vrCodes').textContent;
     if(navigator.clipboard){ navigator.clipboard.writeText(text).then(() => toast('Codes copied')); }
-    else { toast('Copy not available in this preview'); }
+    else { toast('Copy not available in this browser'); }
   });
   document.getElementById('vrPrint').addEventListener('click', () => window.print());
   document.getElementById('vrMintMore').addEventListener('click', () => openModal(createVoucherModal));
 
   /* ---------------- sessions ---------------- */
   let sessionFilter = 'all', sessionQuery = '';
+  function sessionClientLabel(s){
+    return s.customer_name || s.phone || '—';
+  }
+  // Name on top (if known) with the phone number underneath; just the phone otherwise.
+  function sessionClientCell(s){
+    if(s.customer_name && s.phone) return esc(s.customer_name) + '<span class="sub mono">' + esc(s.phone) + '</span>';
+    return esc(sessionClientLabel(s));
+  }
   function renderSessions(){
     const body = document.getElementById('sessionBody');
-    const rows = DB.sessions.filter(s => {
+    const rows = STATE.sessions.filter(s => {
       const mf = sessionFilter === 'all' || s.status === sessionFilter;
       const q = sessionQuery.toLowerCase();
-      const mq = !q || s.mac.toLowerCase().includes(q) || s.plan.toLowerCase().includes(q);
+      const mq = !q || s.mac.toLowerCase().includes(q) || (s.plans && s.plans.duration.toLowerCase().includes(q)) || sessionClientLabel(s).toLowerCase().includes(q) || (s.phone || '').includes(q) || (s.customer_name || '').toLowerCase().includes(q);
       return mf && mq;
     });
     body.innerHTML = rows.map(s =>
-      '<tr><td class="strong mono">' + s.mac + '</td><td>' + s.plan + '</td><td>' + s.started + '</td><td>' + s.left + '</td><td>' + s.data + '</td>' +
+      '<tr><td class="strong mono">' + esc(s.mac) + '</td><td>' + sessionClientCell(s) + '</td><td>' + esc(s.plans ? s.plans.duration : '—') + '</td><td>' + esc(timeAgo(s.started_at)) + '</td><td>' + esc(s.status==='active' ? timeLeft(s.expires_at) : '—') + '</td><td>' + esc(formatMb(s.data_used_mb)) + '</td>' +
       '<td><span class="pill ' + (s.status==='active'?'active':'expired') + '">' + s.status + '</span></td>' +
-      '<td>' + (s.status==='active' ? '<button class="btn btn-danger btn-sm" data-disconnect="' + s.mac + '">Disconnect</button>' : '') + '</td></tr>'
-    ).join('') || '<tr><td colspan="7"><div class="empty">No sessions match.</div></td></tr>';
+      '<td><div style="display:flex; gap:6px; flex-wrap:wrap;">' + (s.status==='active'
+        ? '<button class="btn btn-danger btn-sm" data-disconnect="' + esc(s.mac) + '">Disconnect</button>' +
+          '<button class="btn btn-danger btn-sm" data-expire="' + esc(s.mac) + '">End plan</button>'
+        : '') +
+        '<button class="btn btn-ghost btn-sm" data-grant="' + esc(s.mac) + '">Grant time</button></div></td></tr>'
+    ).join('') || '<tr><td colspan="8"><div class="empty">No sessions match.</div></td></tr>';
   }
   document.getElementById('sessionSearch').addEventListener('input', e => { sessionQuery = e.target.value; renderSessions(); });
   document.getElementById('sessionChips').addEventListener('click', e => {
@@ -1103,33 +1155,70 @@
     chip.classList.add('active'); sessionFilter = chip.dataset.filter; renderSessions();
   });
 
-  document.body.addEventListener('click', e => {
+  document.body.addEventListener('click', async e => {
     const btn = e.target.closest('[data-disconnect]');
     if(!btn) return;
     const mac = btn.dataset.disconnect;
-    // TODO: call MikroTik API to drop the hotspot user, then
-    // await supabase.from('sessions').update({status:'ended'}).eq('mac', mac)
-    const s = DB.sessions.find(x => x.mac === mac);
-    if(s){ s.status = 'ended'; s.left = '—'; }
-    DB.stats.online = DB.sessions.filter(x => x.status === 'active').length;
-    renderStats(); renderSessions(); renderOnlineNow();
-    toast('Disconnected ' + mac, 'bad');
+    try {
+      await api('/api/admin/sessions/' + encodeURIComponent(mac) + '/disconnect', {method:'POST'});
+      await Promise.all([reloadSessions(), reloadOverview(), reloadDevices()]);
+      toast('Disconnected ' + mac, 'bad');
+    } catch(err){ toast(err.message || 'Could not disconnect that device', 'bad'); }
+  });
+
+  /* ---------------- end plan + grant time ---------------- */
+  const grantModal = document.getElementById('grantModal');
+  function openGrant(mac){
+    document.getElementById('gtMac').value = mac || '';
+    document.getElementById('gtAmount').value = '1';
+    document.getElementById('gtUnit').value = '60';
+    document.getElementById('gtSpeed').value = '';
+    openModal(grantModal);
+  }
+  document.getElementById('openGrant').addEventListener('click', () => openGrant(''));
+  document.body.addEventListener('click', async e => {
+    const grant = e.target.closest('[data-grant]');
+    const exp = e.target.closest('[data-expire]');
+    if(grant){ openGrant(grant.dataset.grant); return; }
+    if(exp){
+      const mac = exp.dataset.expire;
+      if(!confirm('End the plan for ' + mac + '? They are disconnected and their remaining time is cancelled.')) return;
+      try {
+        await api('/api/admin/sessions/' + encodeURIComponent(mac) + '/expire', {method:'POST'});
+        await Promise.all([reloadSessions(), reloadOverview(), reloadDevices(), reloadLogs()]);
+        toast('Plan ended for ' + mac, 'bad');
+      } catch(err){ toast(err.message || 'Could not end that plan', 'bad'); }
+    }
+  });
+  document.getElementById('gtSubmit').addEventListener('click', async () => {
+    const mac = document.getElementById('gtMac').value.trim().toUpperCase();
+    const minutes = Math.round(parseFloat(document.getElementById('gtAmount').value) * parseInt(document.getElementById('gtUnit').value, 10));
+    const speed = parseInt(document.getElementById('gtSpeed').value, 10);
+    if(!/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(mac)){ toast('Enter a valid MAC like AA:BB:CC:DD:EE:FF', 'bad'); return; }
+    if(!Number.isFinite(minutes) || minutes < 1){ toast('Enter a valid time', 'bad'); return; }
+    if(!Number.isFinite(speed) || speed < 1){ toast('Enter a speed in Mbps', 'bad'); return; }
+    try {
+      await api('/api/admin/sessions/' + encodeURIComponent(mac) + '/grant', {method:'POST', body: JSON.stringify({minutes, speedMbps: speed})});
+      await Promise.all([reloadSessions(), reloadOverview(), reloadDevices(), reloadLogs()]);
+      closeModals();
+      toast('Access granted to ' + mac);
+    } catch(err){ toast(err.message || 'Could not grant access', 'bad'); }
   });
 
   /* ---------------- payments ---------------- */
   let paymentFilter = 'all', paymentQuery = '';
   function renderPayments(){
     const body = document.getElementById('paymentBody');
-    const rows = DB.payments.filter(p => {
+    const rows = STATE.payments.filter(p => {
       const mf = paymentFilter === 'all' || p.status === paymentFilter;
       const q = paymentQuery.toLowerCase();
-      const mq = !q || p.phone.toLowerCase().includes(q) || p.plan.toLowerCase().includes(q) || p.voucher.toLowerCase().includes(q);
+      const mq = !q || (p.phone||'').toLowerCase().includes(q) || (p.plan_label||'').toLowerCase().includes(q) || (p.mpesa_receipt||'').toLowerCase().includes(q);
       return mf && mq;
     });
     body.innerHTML = rows.map(p =>
-      '<tr><td>' + p.time + '</td><td class="mono">' + p.phone + '</td><td>' + p.plan + '</td><td>' + ksh(p.amount) + '</td>' +
-      '<td><span class="pill ' + p.status + '">' + p.status + '</span></td><td class="mono">' + p.voucher + '</td></tr>'
-    ).join('') || '<tr><td colspan="6"><div class="empty">No payments match.</div></td></tr>';
+      '<tr><td>' + esc(timeAgo(p.created_at)) + '</td><td>' + esc(p.customer_name || '—') + '</td><td class="mono">' + esc(maskPhone(p.phone)) + '</td><td>' + esc(p.plan_label || '—') + '</td><td>' + ksh(p.amount) + '</td>' +
+      '<td><span class="pill ' + p.status + '">' + p.status + '</span></td><td class="mono">' + esc(p.mpesa_receipt || '—') + '</td></tr>'
+    ).join('') || '<tr><td colspan="7"><div class="empty">No payments match.</div></td></tr>';
   }
   document.getElementById('paymentSearch').addEventListener('input', e => { paymentQuery = e.target.value; renderPayments(); });
   document.getElementById('paymentChips').addEventListener('click', e => {
@@ -1138,24 +1227,45 @@
     chip.classList.add('active'); paymentFilter = chip.dataset.filter; renderPayments();
   });
 
+  /* ---------------- M-Pesa receipts (Till, no STK) ---------------- */
+  function renderReceipts(){
+    const body = document.getElementById('receiptBody');
+    if(!body) return;
+    body.innerHTML = STATE.receipts.map(r =>
+      '<tr><td>' + esc(timeAgo(r.created_at)) + '</td><td class="mono">' + esc(r.code) + '</td><td>' + esc(r.customer_name || '—') + '</td><td class="mono">' + esc(maskPhone(r.phone)) + '</td><td>' + ksh(r.amount) + '</td>' +
+      '<td><span class="pill ' + (r.used ? 'active' : 'unused') + '">' + (r.used ? 'Yes' : 'No') + '</span></td><td class="mono">' + esc(r.mac || '—') + '</td></tr>'
+    ).join('') || '<tr><td colspan="7"><div class="empty">No M-Pesa Till payments yet.</div></td></tr>';
+  }
+
   /* ---------------- devices ---------------- */
   let deviceFilter = 'all', deviceQuery = '';
+  function deviceLastPlan(mac){
+    const s = STATE.sessions.filter(x => x.mac === mac).sort((a,b) => new Date(b.started_at) - new Date(a.started_at))[0];
+    return s && s.plans ? s.plans.duration : '—';
+  }
   function renderDevices(){
     const body = document.getElementById('deviceBody');
-    const rows = DB.devices.filter(d => {
+    const rows = STATE.devices.filter(d => {
       const mf = deviceFilter === 'all' || (deviceFilter === 'online' ? d.status === 'online' : d.status === deviceFilter);
       const q = deviceQuery.toLowerCase();
       const mq = !q || d.mac.toLowerCase().includes(q);
       return mf && mq;
     });
     body.innerHTML = rows.map(d =>
-      '<tr><td class="strong mono">' + d.mac + '</td>' +
+      '<tr><td class="strong mono">' + esc(d.mac) + '</td>' +
       '<td><span class="pill ' + (d.status==='online'?'active':d.status==='blocked'?'blocked':'expired') + '">' + d.status + '</span></td>' +
-      '<td>' + d.plan + '</td><td>' + d.guesses + ' / 10</td><td>' + d.seen + '</td>' +
-      '<td>' + (d.status==='blocked'
-        ? '<button class="btn btn-ghost btn-sm" data-unblock-device="' + d.mac + '">Unblock</button>'
-        : '<button class="btn btn-danger btn-sm" data-block-device="' + d.mac + '">Block</button>') + '</td></tr>'
-    ).join('') || '<tr><td colspan="6"><div class="empty">No devices match.</div></td></tr>';
+      '<td>' + esc(deviceLastPlan(d.mac)) + '</td>' +
+      '<td>' + (d.speed_override
+        ? '<span class="pill throttled">' + d.speed_override + ' Mbps</span>'
+        : '<span style="color:var(--muted);">Plan default</span>') + '</td>' +
+      '<td>' + d.guesses + ' / 10</td><td>' + esc(timeAgo(d.last_seen)) + '</td>' +
+      '<td style="display:flex; gap:6px; flex-wrap:wrap;">' +
+        (d.status==='blocked'
+          ? '<button class="btn btn-ghost btn-sm" data-unblock-device="' + esc(d.mac) + '">Unblock</button>'
+          : '<button class="btn btn-danger btn-sm" data-block-device="' + esc(d.mac) + '">Block</button>') +
+        '<button class="btn btn-ghost btn-sm" data-set-speed="' + esc(d.mac) + '">' + (d.speed_override ? 'Change speed' : 'Set speed') + '</button>' +
+      '</td></tr>'
+    ).join('') || '<tr><td colspan="7"><div class="empty">No devices match.</div></td></tr>';
   }
   document.getElementById('deviceSearch').addEventListener('input', e => { deviceQuery = e.target.value; renderDevices(); });
   document.getElementById('deviceChips').addEventListener('click', e => {
@@ -1163,77 +1273,293 @@
     document.querySelectorAll('#deviceChips .chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active'); deviceFilter = chip.dataset.filter; renderDevices();
   });
-  document.body.addEventListener('click', e => {
+  let speedEditingMac = null;
+  const deviceSpeedModal = document.getElementById('deviceSpeedModal');
+  document.body.addEventListener('click', async e => {
     const block = e.target.closest('[data-block-device]');
     const unblock = e.target.closest('[data-unblock-device]');
+    const setSpeed = e.target.closest('[data-set-speed]');
     if(block){
       const mac = block.dataset.blockDevice;
-      const d = DB.devices.find(x => x.mac === mac);
-      if(d) d.status = 'blocked';
-      renderDevices(); toast('Blocked ' + mac, 'bad');
+      try {
+        await api('/api/admin/devices/' + encodeURIComponent(mac), {method:'PATCH', body: JSON.stringify({action:'block'})});
+        await Promise.all([reloadDevices(), reloadOverview()]);
+        toast('Blocked ' + mac, 'bad');
+      } catch(err){ toast(err.message || 'Could not block that device', 'bad'); }
     }
     if(unblock){
       const mac = unblock.dataset.unblockDevice;
-      const d = DB.devices.find(x => x.mac === mac);
-      if(d){ d.status = 'offline'; d.guesses = 0; }
-      renderDevices(); toast('Unblocked ' + mac);
+      try {
+        await api('/api/admin/devices/' + encodeURIComponent(mac), {method:'PATCH', body: JSON.stringify({action:'unblock'})});
+        await Promise.all([reloadDevices(), reloadOverview()]);
+        toast('Unblocked ' + mac);
+      } catch(err){ toast(err.message || 'Could not unblock that device', 'bad'); }
     }
+    if(setSpeed){
+      const mac = setSpeed.dataset.setSpeed;
+      const d = STATE.devices.find(x => x.mac === mac);
+      if(!d) return;
+      speedEditingMac = mac;
+      document.getElementById('dsDeviceLabel').textContent =
+        "Limits " + mac + "'s speed below its plan, regardless of what it paid for. Useful if you suspect it's sharing its connection — the device is never told.";
+      document.getElementById('dsSpeed').value = d.speed_override || '';
+      openModal(deviceSpeedModal);
+    }
+  });
+  document.getElementById('dsSubmit').addEventListener('click', async () => {
+    const speed = parseInt(document.getElementById('dsSpeed').value, 10);
+    if(!Number.isFinite(speed) || speed < 1){
+      toast('Enter a valid speed in Mbps first', 'bad');
+      return;
+    }
+    try {
+      await api('/api/admin/devices/' + encodeURIComponent(speedEditingMac), {method:'PATCH', body: JSON.stringify({action:'setSpeed', speedMbps: speed})});
+      await reloadDevices();
+      closeModals();
+      toast(speedEditingMac + ' throttled to ' + speed + ' Mbps');
+    } catch(err){ toast(err.message || 'Could not set that speed', 'bad'); }
+  });
+  document.getElementById('dsRemove').addEventListener('click', async () => {
+    try {
+      await api('/api/admin/devices/' + encodeURIComponent(speedEditingMac), {method:'PATCH', body: JSON.stringify({action:'setSpeed', speedMbps: null})});
+      await reloadDevices();
+      closeModals();
+      toast('Speed limit removed for ' + speedEditingMac);
+    } catch(err){ toast(err.message || 'Could not remove that limit', 'bad'); }
   });
 
   /* ---------------- logs ---------------- */
   let logQuery = '';
   function renderLogs(){
     const body = document.getElementById('logBody');
-    const rows = DB.logs.filter(l => {
+    const rows = STATE.logs.filter(l => {
       const q = logQuery.toLowerCase();
-      return !q || l.event.toLowerCase().includes(q) || l.actor.toLowerCase().includes(q) || l.detail.toLowerCase().includes(q);
+      return !q || l.event.toLowerCase().includes(q) || l.actor.toLowerCase().includes(q) || (l.detail||'').toLowerCase().includes(q);
     });
     body.innerHTML = rows.map(l =>
-      '<tr><td>' + l.time + '</td><td class="strong">' + esc(l.event) + '</td><td>' + esc(l.actor) + '</td><td class="mono" style="font-size:12.5px;">' + esc(l.detail) + '</td></tr>'
+      '<tr><td>' + esc(fmtDateTime(l.created_at)) + '</td><td class="strong">' + esc(l.event) + '</td><td>' + esc(l.actor) + '</td><td class="mono" style="font-size:12.5px;">' + esc(l.detail) + '</td></tr>'
     ).join('') || '<tr><td colspan="4"><div class="empty">No log entries match.</div></td></tr>';
   }
   document.getElementById('logSearch').addEventListener('input', e => { logQuery = e.target.value; renderLogs(); });
-  document.getElementById('exportLogs').addEventListener('click', () => toast('Export will download a CSV once connected to Supabase'));
+  document.getElementById('exportLogs').addEventListener('click', () => {
+    if(!STATE.logs.length){ toast('No logs to export yet', 'bad'); return; }
+    const header = 'Time,Event,Actor,Detail\n';
+    const rows = STATE.logs.map(l => [l.created_at, l.event, l.actor, l.detail || '']
+      .map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+    const blob = new Blob([header + rows], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'marnet-logs.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
 
   /* ---------------- plans ---------------- */
+  function planDeviceLabel(p){
+    const n = p.devices_allowed || 1;
+    return n + ' device' + (n===1?'':'s');
+  }
   function renderPlans(){
     const grid = document.getElementById('planGrid');
-    grid.innerHTML = DB.plans.map(p =>
+    grid.innerHTML = STATE.plans.map(p =>
       '<div class="plan-card' + (p.popular ? ' popular' : '') + '">' +
         (p.popular ? '<span class="tag">Popular</span>' : '') +
-        '<div class="duration">' + p.d + '</div>' +
-        '<div class="price">' + ksh(p.p) + '<small> / ' + p.d + '</small></div>' +
-        '<div class="devices">' + p.devices + '</div>' +
+        '<div class="duration">' + esc(p.duration) + '</div>' +
+        '<div class="price">' + ksh(p.price) + '<small> / ' + esc(p.duration) + '</small></div>' +
+        '<div class="devices">' + planDeviceLabel(p) + '</div>' +
+        '<div class="speed">Speed cap: <b>' + p.speed_mbps + ' Mbps</b></div>' +
         '<div class="row-actions"><button class="btn btn-ghost btn-sm" data-edit-plan="' + p.id + '">Edit</button>' +
         '<button class="btn btn-ghost btn-sm" data-toggle-popular="' + p.id + '">' + (p.popular ? 'Unmark' : 'Mark popular') + '</button></div>' +
       '</div>'
     ).join('') + '<div class="plan-card add" id="addPlanCard"><span style="font-size:22px;">+</span><span style="font-size:13px; font-weight:700;">Add plan</span></div>';
 
     document.getElementById('addPlanCard').addEventListener('click', () => {
-      toast('Plan editor placeholder — wire this up to Supabase next');
+      toast('Adding brand-new plans isn\'t wired up yet — edit an existing one for now');
     });
   }
-  document.getElementById('planGrid').addEventListener('click', e => {
+
+  let editingPlanId = null;
+  const editPlanModal = document.getElementById('editPlanModal');
+  document.getElementById('planGrid').addEventListener('click', async e => {
     const edit = e.target.closest('[data-edit-plan]');
     const pop = e.target.closest('[data-toggle-popular]');
-    if(edit) toast('Editing "' + edit.dataset.editPlan + '" — placeholder only');
+    if(edit){
+      const p = STATE.plans.find(x => x.id === edit.dataset.editPlan);
+      if(!p) return;
+      editingPlanId = p.id;
+      document.getElementById('epTitle').textContent = 'Edit ' + p.duration + ' plan';
+      document.getElementById('epPrice').value = p.price;
+      document.getElementById('epDevices').value = planDeviceLabel(p);
+      document.getElementById('epSpeed').value = p.speed_mbps;
+      openModal(editPlanModal);
+    }
     if(pop){
-      const p = DB.plans.find(x => x.id === pop.dataset.togglePopular);
-      if(p) p.popular = !p.popular;
-      renderPlans();
+      const p = STATE.plans.find(x => x.id === pop.dataset.togglePopular);
+      if(!p) return;
+      try {
+        await api('/api/admin/plans/' + encodeURIComponent(p.id), {method:'PATCH', body: JSON.stringify({popular: !p.popular})});
+        await reloadPlans();
+      } catch(err){ toast(err.message || 'Could not update that plan', 'bad'); }
     }
   });
+  document.getElementById('epSubmit').addEventListener('click', async () => {
+    const p = STATE.plans.find(x => x.id === editingPlanId);
+    if(!p) return;
+    const price = parseInt(document.getElementById('epPrice').value, 10);
+    const speed = parseInt(document.getElementById('epSpeed').value, 10);
+    const devicesText = document.getElementById('epDevices').value.trim();
+    const devicesAllowed = parseInt(devicesText, 10) || p.devices_allowed || 1;
+    if(!Number.isFinite(price) || price < 0 || !Number.isFinite(speed) || speed < 1){
+      toast('Enter a valid price and speed first', 'bad');
+      return;
+    }
+    try {
+      await api('/api/admin/plans/' + encodeURIComponent(p.id), {
+        method:'PATCH',
+        body: JSON.stringify({price, speedMbps: speed, devicesAllowed})
+      });
+      await reloadPlans();
+      closeModals();
+      toast('Plan updated');
+    } catch(err){ toast(err.message || 'Could not update that plan', 'bad'); }
+  });
 
-  /* ---------------- settings toggles ---------------- */
+  /* ---------------- settings toggles (display-only) ---------------- */
   document.querySelectorAll('[data-toggle]').forEach(t => {
     t.addEventListener('click', () => t.classList.toggle('on'));
   });
 
+  /* ---------------- settings: connectivity + save actions ---------------- */
+  function setStatusLine(elId, dotClass, text){
+    document.getElementById(elId).innerHTML =
+      '<span class="dot ' + dotClass + '" style="margin-top:0;"></span>' + esc(text);
+  }
+
+  document.getElementById('mtTestBtn').addEventListener('click', async () => {
+    const host = document.getElementById('mtHost').value.trim();
+    if(!host){ toast('Enter the router address first', 'bad'); return; }
+    setStatusLine('mtStatus', 'warn', 'Testing…');
+    try {
+      await withTimeout(api('/api/admin/test-mikrotik', {
+        method: 'POST',
+        body: JSON.stringify({host, port: document.getElementById('mtPort').value, user: document.getElementById('mtUser').value})
+      }), 8000);
+      setStatusLine('mtStatus', 'good', 'Connected');
+      toast('Router connection looks good');
+    } catch (err) {
+      setStatusLine('mtStatus', 'bad', 'Not connected');
+      toast(err.message || 'Unknown error. Please try again.', 'bad');
+    }
+  });
+
+  document.getElementById('mpSaveBtn').addEventListener('click', () => {
+    const till = document.getElementById('mpTill').value.trim();
+    if(!till){ toast('Enter a paybill or till number first', 'bad'); return; }
+    // The Till/paybill number itself lives in the backend's MPESA_SHORTCODE
+    // env var, not a database row — update it there and redeploy.
+    toast('Update MPESA_SHORTCODE in the backend\'s environment and redeploy to change this.');
+  });
+
+  document.getElementById('c2bRegisterBtn').addEventListener('click', async () => {
+    setStatusLine('c2bStatus', 'warn', 'Registering…');
+    try {
+      await withTimeout(api('/api/admin/mpesa/register-c2b', {method:'POST'}), 15000);
+      setStatusLine('c2bStatus', 'good', 'Registered — Till payments will now confirm automatically');
+      toast('C2B URL registered with Safaricom');
+    } catch (err) {
+      setStatusLine('c2bStatus', 'bad', 'Registration failed');
+      toast(err.message || 'Unknown error. Please try again.', 'bad');
+    }
+  });
+
+  document.getElementById('sbConnectBtn').addEventListener('click', async () => {
+    const url = document.getElementById('sbUrl').value.trim();
+    const key = document.getElementById('sbKey').value.trim();
+    if(!url || !key){ toast('Enter your Supabase project URL and anon key first', 'bad'); return; }
+    setStatusLine('sbStatus', 'warn', 'Connecting…');
+    try {
+      await withTimeout(fetch(url.replace(/\/$/, '') + '/rest/v1/', {
+        headers: {'apikey': key}
+      }), 8000);
+      setStatusLine('sbStatus', 'good', 'Connected');
+      toast('Supabase connected');
+    } catch (err) {
+      setStatusLine('sbStatus', 'bad', 'Not connected');
+      toast('Unknown error. Please try again.', 'bad');
+    }
+  });
+
+  document.getElementById('bePingBtn').addEventListener('click', async () => {
+    setStatusLine('beStatus', 'warn', 'Pinging…');
+    try {
+      const res = await withTimeout(fetch(BACKEND_URL + '/api/health'), 10000);
+      if(!res.ok) throw new Error('not-ok');
+      setStatusLine('beStatus', 'good', 'Backend awake — last ping just now');
+      toast('Backend is awake');
+    } catch (err) {
+      setStatusLine('beStatus', 'bad', 'Backend unreachable');
+      toast('Unknown error. Please try again.', 'bad');
+    }
+  });
+
+  document.getElementById('acctSaveBtn').addEventListener('click', async () => {
+    const newPass = document.getElementById('acctNewPass').value;
+    if(!newPass){ toast('Enter a new password first', 'bad'); return; }
+    if(newPass.length < 6){ toast('Password must be at least 6 characters', 'bad'); return; }
+    try {
+      await api('/api/admin/account', {method:'PATCH', body: JSON.stringify({newPassword: newPass})});
+      document.getElementById('acctNewPass').value = '';
+      document.getElementById('acctStatus').textContent = 'Password changed just now';
+      toast('Password updated');
+    } catch(err){ toast(err.message || 'Could not update the password', 'bad'); }
+  });
+
   /* ============================================================
-     SIGN-IN FLOW — real backend auth (POST /api/admin/login).
-     The 3-failed-tries lock is still shown client-side for instant
-     feedback, but the backend enforces the same limit itself (429
-     after 3 tries / 15 min per IP), so a reload can't bypass it.
+     RELOAD HELPERS — targeted refreshes after a single action, so
+     we don't have to re-fetch everything on every click.
+  ============================================================ */
+  async function reloadOverview(){ STATE.stats = (await api('/api/admin/overview')).stats; renderStats(); }
+  async function reloadVouchers(){ STATE.vouchers = (await api('/api/admin/vouchers')).vouchers; renderVouchers(); }
+  async function reloadSessions(){ STATE.sessions = (await api('/api/admin/sessions')).sessions; renderSessions(); renderOnlineNow(); }
+  async function reloadPayments(){ STATE.payments = (await api('/api/admin/payments')).payments; renderPayments(); }
+  async function reloadReceipts(){ STATE.receipts = (await api('/api/admin/mpesa-receipts')).receipts; renderReceipts(); }
+  async function reloadDevices(){ STATE.devices = (await api('/api/admin/devices')).devices; renderDevices(); }
+  async function reloadLogs(){ STATE.logs = (await api('/api/admin/logs')).logs; renderLogs(); renderActivity(); }
+  async function reloadPlans(){ STATE.plans = (await api('/api/admin/plans')).plans; renderPlans(); renderCvPlanOptions(); }
+
+  async function loadAll(){
+    try {
+      const [overview, plans, vouchers, sessions, payments, receipts, devices, logs, revenue] = await Promise.all([
+        api('/api/admin/overview'),
+        api('/api/admin/plans'),
+        api('/api/admin/vouchers'),
+        api('/api/admin/sessions'),
+        api('/api/admin/payments'),
+        api('/api/admin/mpesa-receipts'),
+        api('/api/admin/devices'),
+        api('/api/admin/logs'),
+        api('/api/admin/analytics/revenue7d')
+      ]);
+      STATE.stats = overview.stats;
+      STATE.plans = plans.plans || [];
+      STATE.vouchers = vouchers.vouchers || [];
+      STATE.sessions = sessions.sessions || [];
+      STATE.payments = payments.payments || [];
+      STATE.receipts = receipts.receipts || [];
+      STATE.devices = devices.devices || [];
+      STATE.logs = logs.logs || [];
+      STATE.revenue7d = revenue.revenue7d || [];
+
+      renderStats(); renderChart(); renderActivity(); renderOnlineNow();
+      renderVouchers(); renderCvPlanOptions(); renderSessions(); renderPayments();
+      renderReceipts(); renderDevices(); renderLogs(); renderPlans();
+    } catch(err){
+      console.error(err);
+      toast('Could not load data from the backend', 'bad');
+    }
+  }
+
+  /* ============================================================
+     SIGN-IN FLOW — real auth against POST /api/admin/login
   ============================================================ */
   const MAX_TRIES = 3, LOCK_MINUTES = 15;
   let failedTries = 0, lockUntil = null, lockInterval = null;
@@ -1244,11 +1570,6 @@
   const suLockBox = document.getElementById('suLockBox');
   const suSubmit = document.getElementById('suSubmit');
   const suLockTimer = document.getElementById('suLockTimer');
-  const footUser = document.getElementById('footUser');
-  const acctUsername = document.getElementById('acctUsername');
-  const acctNewPassword = document.getElementById('acctNewPassword');
-  const acctStatus = document.getElementById('acctStatus');
-  const acctSaveBtn = document.getElementById('acctSaveBtn');
 
   document.getElementById('suEye').addEventListener('click', () => {
     suPass.type = suPass.type === 'password' ? 'text' : 'password';
@@ -1259,8 +1580,8 @@
     const m = Math.floor(total/60), s = total%60;
     return m + ':' + String(s).padStart(2,'0');
   }
-  function startLock(minutes){
-    lockUntil = Date.now() + (minutes || LOCK_MINUTES)*60*1000;
+  function startLock(){
+    lockUntil = Date.now() + LOCK_MINUTES*60*1000;
     suSubmit.disabled = true;
     suLockBox.style.display = 'flex';
     suMsg.style.display = 'block';
@@ -1277,44 +1598,19 @@
         suLockTimer.textContent = fmtMMSS(remain);
       }
     }, 250);
-    suLockTimer.textContent = fmtMMSS((minutes || LOCK_MINUTES)*60*1000);
+    suLockTimer.textContent = fmtMMSS(LOCK_MINUTES*60*1000);
   }
 
-  function showApp(username){
-    failedTries = 0;
-    footUser.textContent = username;
+  function enterApp(username){
+    document.getElementById('footUser').textContent = username;
+    const acctUsername = document.getElementById('acctUsername');
     if(acctUsername) acctUsername.value = username;
-    if(acctStatus) acctStatus.textContent = 'Last sign-in: just now';
     document.getElementById('signinView').style.display = 'none';
     document.getElementById('appView').style.display = 'flex';
-    startIdleWatch();
+    loadAll();
   }
 
-  /* ---------------- auto sign-out after 1 minute of inactivity ---------------- */
-  const IDLE_LIMIT_MS = 60 * 1000;
-  let idleTimer = null;
-  function resetIdleTimer(){
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(function(){
-      signOut();
-      suMsg.style.display = 'block';
-      suMsg.textContent = 'Signed out after 1 minute of inactivity.';
-    }, IDLE_LIMIT_MS);
-  }
-  function startIdleWatch(){
-    resetIdleTimer();
-  }
-  function stopIdleWatch(){
-    clearTimeout(idleTimer);
-  }
-  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'].forEach(function(evt){
-    document.addEventListener(evt, function(){
-      // Only matters while signed in — appView is the visible one then.
-      if(document.getElementById('appView').style.display !== 'none') resetIdleTimer();
-    }, {passive: true});
-  });
-
-  suSubmit.addEventListener('click', () => {
+  suSubmit.addEventListener('click', async () => {
     if(lockUntil && Date.now() < lockUntil) return;
     const username = suUser.value.trim();
     const password = suPass.value;
@@ -1324,86 +1620,52 @@
       return;
     }
     suSubmit.disabled = true;
-    apiPost('/api/admin/login', {username, password})
-      .then(function(data){
-        suSubmit.disabled = false;
-        setToken(data.token);
-        showApp(data.username || username);
-      })
-      .catch(function(err){
-        suSubmit.disabled = false;
-        failedTries++;
-        if(/too many attempts/i.test(err.message)){
-          startLock(15);
-          suMsg.textContent = err.message;
-        } else if(failedTries >= MAX_TRIES){
-          startLock();
-        } else {
-          suMsg.style.display = 'block';
-          suMsg.textContent = err.message || 'Incorrect username or password.';
-        }
-      });
+    try {
+      const result = await api('/api/admin/login', {method:'POST', body: JSON.stringify({username, password})});
+      sessionStorage.setItem('mn_admin_token', result.token);
+      sessionStorage.setItem('mn_admin_user', result.username);
+      failedTries = 0;
+      suMsg.style.display = 'none';
+      enterApp(result.username);
+    } catch(err){
+      failedTries++;
+      if(failedTries >= MAX_TRIES){
+        startLock();
+      } else {
+        suMsg.style.display = 'block';
+        suMsg.textContent = (err.message || 'Incorrect username or password.') + ' ' + (MAX_TRIES - failedTries) + ' attempt' + (MAX_TRIES-failedTries===1?'':'s') + ' left.';
+      }
+    } finally {
+      suSubmit.disabled = false;
+    }
   });
   [suUser, suPass].forEach(i => i.addEventListener('keydown', e => { if(e.key === 'Enter') suSubmit.click(); }));
 
-  function signOut(){
-    stopIdleWatch();
-    setToken('');
+  document.getElementById('signOutBtn').addEventListener('click', () => {
+    sessionStorage.removeItem('mn_admin_token');
+    sessionStorage.removeItem('mn_admin_user');
     document.getElementById('appView').style.display = 'none';
     document.getElementById('signinView').style.display = 'flex';
     suUser.value = ''; suPass.value = '';
-  }
-  document.getElementById('signOutBtn').addEventListener('click', signOut);
-  // Real navigation to the live portal — no preventDefault, no placeholder toast.
+  });
+  document.getElementById('backToPortal').addEventListener('click', e => { e.preventDefault(); toast('This would return to the captive portal'); });
 
-  /* ---------------- operator account: real password change ---------------- */
-  if(acctSaveBtn){
-    acctSaveBtn.addEventListener('click', function(){
-      const newPassword = acctNewPassword.value;
-      if(!newPassword){
-        acctStatus.textContent = 'Enter a new password to change it.';
-        return;
-      }
-      if(newPassword.length < 6){
-        acctStatus.textContent = 'Password must be at least 6 characters.';
-        return;
-      }
-      acctSaveBtn.disabled = true;
-      acctStatus.textContent = 'Saving…';
-      apiPatch('/api/admin/account', {newPassword})
-        .then(function(){
-          acctNewPassword.value = '';
-          acctStatus.textContent = 'Password updated.';
-        })
-        .catch(function(err){
-          acctStatus.textContent = err.message || 'Unknown error. Please try again.';
-        })
-        .finally(function(){ acctSaveBtn.disabled = false; });
-    });
-  }
-
-  /* ---------------- restore session on reload, if token still valid ---------------- */
-  (function restoreSession(){
-    const token = getToken();
+  /* ---------------- resume an existing session, if any ---------------- */
+  (async function initialCheck(){
+    const token = sessionStorage.getItem('mn_admin_token');
+    const username = sessionStorage.getItem('mn_admin_user');
     if(!token) return;
-    apiGet('/api/admin/me')
-      .then(function(data){ showApp(data.username); })
-      .catch(function(){ setToken(''); });
+    try {
+      await api('/api/admin/me');
+      enterApp(username || 'operator');
+    } catch(err){
+      sessionStorage.removeItem('mn_admin_token');
+      sessionStorage.removeItem('mn_admin_user');
+    }
   })();
 
-  /* ---------------- initial render ---------------- */
-  renderStats();
-  renderChart();
-  renderActivity();
-  renderOnlineNow();
-  renderVouchers();
-  renderSessions();
-  renderPayments();
-  renderDevices();
-  renderLogs();
-  renderPlans();
-
 })();
+
 </script>
 </body>
 </html>
