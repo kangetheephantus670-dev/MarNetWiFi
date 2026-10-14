@@ -152,7 +152,7 @@
     color:var(--accent-deep); text-decoration:none;
   }
 
-  /* ================= app shell ================= */
+  
   .app-shell{display:flex; min-height:100vh;}
   .sidebar{
     width:232px; flex-shrink:0; background:var(--side-bg); color:var(--side-ink);
@@ -311,9 +311,7 @@
 </head>
 <body>
 
-<!-- ============================================================ -->
-<!-- SIGN-IN VIEW                                                  -->
-<!-- ============================================================ -->
+
 <div id="signinView" class="signin-screen">
   <div class="signin-wrap">
     <div class="brand-row">
@@ -354,9 +352,7 @@
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- APP SHELL                                                     -->
-<!-- ============================================================ -->
+
 <div id="appView" class="app-shell" style="display:none;">
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <aside class="sidebar" id="sidebar">
@@ -365,7 +361,7 @@
       <span><b>MarNet</b><span>Operator console</span></span>
     </div>
     <nav id="navList">
-      <!-- populated by JS -->
+     
     </nav>
     <div class="foot">
       Signed in as <b id="footUser">operator</b>
@@ -375,7 +371,7 @@
 
   <main class="content">
 
-    <!-- ---------- OVERVIEW ---------- -->
+ 
     <section class="view active" data-view="overview">
       <div class="topbar">
         <div class="titles">
@@ -413,7 +409,7 @@
       </div>
     </section>
 
-    <!-- ---------- VOUCHERS ---------- -->
+  
     <section class="view" data-view="vouchers">
       <div class="topbar">
         <div class="titles">
@@ -452,7 +448,6 @@
       </div>
     </section>
 
-    <!-- ---------- SESSIONS ---------- -->
     <section class="view" data-view="sessions">
       <div class="topbar">
         <div class="titles">
@@ -484,7 +479,7 @@
       </div>
     </section>
 
-    <!-- ---------- PAYMENTS ---------- -->
+   
     <section class="view" data-view="payments">
       <div class="topbar">
         <div class="titles">
@@ -524,7 +519,7 @@
       </div>
     </section>
 
-    <!-- ---------- DEVICES ---------- -->
+  
     <section class="view" data-view="devices">
       <div class="topbar">
         <div class="titles">
@@ -553,7 +548,7 @@
       </div>
     </section>
 
-    <!-- ---------- LOGS ---------- -->
+   
     <section class="view" data-view="logs">
       <div class="topbar">
         <div class="titles">
@@ -594,7 +589,7 @@
       <div class="plan-grid" id="planGrid"></div>
     </section>
 
-    <!-- ---------- SETTINGS ---------- -->
+    
     <section class="view" data-view="settings">
       <div class="topbar">
         <div class="titles">
@@ -698,9 +693,7 @@
   </main>
 </div>
 
-<!-- ============================================================ -->
-<!-- MODALS                                                        -->
-<!-- ============================================================ -->
+
 <div class="modal-overlay" id="modalOverlay">
 
   <div class="modal" id="createVoucherModal" style="display:none;">
@@ -800,15 +793,7 @@
 <script>
 (function(){
   "use strict";
-
-  /* ============================================================
-     Real backend wiring. Every render function below is fed from
-     STATE, which is populated by loadAll()/reload*() calls against
-     the actual /api/admin/* routes — there is no mock data left.
-  ============================================================ */
-
-  const BACKEND_URL = "https://marnetwifi.onrender.com"; // TODO: confirm once backend is live
-
+  const BACKEND_URL = "https://marnetwifi.onrender.com"; 
   const icons = {
     overview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>',
     vouchers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z"/><path d="M10 6v12" stroke-dasharray="2.5 2.5"/></svg>',
@@ -831,7 +816,6 @@
     {id:'settings', label:'Settings'}
   ];
 
-  // Populated entirely from the backend — see loadAll() near the bottom.
   const STATE = {
     stats: { todayKsh:0, online:0, unusedCodes:0, needsAttention:0 },
     revenue7d: [],
@@ -844,7 +828,7 @@
     logs: []
   };
 
-  /* ---------------- helpers ---------------- */
+
   function ksh(n){ return 'Ksh ' + (n||0).toLocaleString(); }
   function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
@@ -925,7 +909,7 @@
     ]);
   }
 
-  /* ---------------- sidebar nav ---------------- */
+
   const navList = document.getElementById('navList');
   NAV.forEach(item => {
     const b = el('button', 'navlink' + (item.id === 'overview' ? ' active' : ''),
@@ -1026,7 +1010,7 @@
     ).join('') || '<tr><td colspan="5"><div class="empty">No devices online right now.</div></td></tr>';
   }
 
-  /* ---------------- vouchers ---------------- */
+ 
   let voucherFilter = 'all', voucherQuery = '';
   function voucherPlanLabel(v){
     if(v.plans) return v.plans.duration + ' · ' + ksh(v.plans.price) + (v.note ? ' — ' + v.note : '');
@@ -1082,7 +1066,6 @@
     }
   });
 
-  /* ---------------- create voucher modal ---------------- */
   const modalOverlay = document.getElementById('modalOverlay');
   const createVoucherModal = document.getElementById('createVoucherModal');
   const vouchersReadyModal = document.getElementById('vouchersReadyModal');
@@ -1120,12 +1103,11 @@
   document.getElementById('vrPrint').addEventListener('click', () => window.print());
   document.getElementById('vrMintMore').addEventListener('click', () => openModal(createVoucherModal));
 
-  /* ---------------- sessions ---------------- */
+  
   let sessionFilter = 'all', sessionQuery = '';
   function sessionClientLabel(s){
     return s.customer_name || s.phone || '—';
   }
-  // Name on top (if known) with the phone number underneath; just the phone otherwise.
   function sessionClientCell(s){
     if(s.customer_name && s.phone) return esc(s.customer_name) + '<span class="sub mono">' + esc(s.phone) + '</span>';
     return esc(sessionClientLabel(s));
@@ -1166,7 +1148,6 @@
     } catch(err){ toast(err.message || 'Could not disconnect that device', 'bad'); }
   });
 
-  /* ---------------- end plan + grant time ---------------- */
   const grantModal = document.getElementById('grantModal');
   function openGrant(mac){
     document.getElementById('gtMac').value = mac || '';
@@ -1227,7 +1208,6 @@
     chip.classList.add('active'); paymentFilter = chip.dataset.filter; renderPayments();
   });
 
-  /* ---------------- M-Pesa receipts (Till, no STK) ---------------- */
   function renderReceipts(){
     const body = document.getElementById('receiptBody');
     if(!body) return;
@@ -1237,7 +1217,6 @@
     ).join('') || '<tr><td colspan="7"><div class="empty">No M-Pesa Till payments yet.</div></td></tr>';
   }
 
-  /* ---------------- devices ---------------- */
   let deviceFilter = 'all', deviceQuery = '';
   function deviceLastPlan(mac){
     const s = STATE.sessions.filter(x => x.mac === mac).sort((a,b) => new Date(b.started_at) - new Date(a.started_at))[0];
@@ -1328,7 +1307,6 @@
     } catch(err){ toast(err.message || 'Could not remove that limit', 'bad'); }
   });
 
-  /* ---------------- logs ---------------- */
   let logQuery = '';
   function renderLogs(){
     const body = document.getElementById('logBody');
@@ -1353,7 +1331,6 @@
     URL.revokeObjectURL(url);
   });
 
-  /* ---------------- plans ---------------- */
   function planDeviceLabel(p){
     const n = p.devices_allowed || 1;
     return n + ' device' + (n===1?'':'s');
@@ -1423,12 +1400,10 @@
     } catch(err){ toast(err.message || 'Could not update that plan', 'bad'); }
   });
 
-  /* ---------------- settings toggles (display-only) ---------------- */
   document.querySelectorAll('[data-toggle]').forEach(t => {
     t.addEventListener('click', () => t.classList.toggle('on'));
   });
 
-  /* ---------------- settings: connectivity + save actions ---------------- */
   function setStatusLine(elId, dotClass, text){
     document.getElementById(elId).innerHTML =
       '<span class="dot ' + dotClass + '" style="margin-top:0;"></span>' + esc(text);
@@ -1454,8 +1429,6 @@
   document.getElementById('mpSaveBtn').addEventListener('click', () => {
     const till = document.getElementById('mpTill').value.trim();
     if(!till){ toast('Enter a paybill or till number first', 'bad'); return; }
-    // The Till/paybill number itself lives in the backend's MPESA_SHORTCODE
-    // env var, not a database row — update it there and redeploy.
     toast('Update MPESA_SHORTCODE in the backend\'s environment and redeploy to change this.');
   });
 
@@ -1513,10 +1486,8 @@
     } catch(err){ toast(err.message || 'Could not update the password', 'bad'); }
   });
 
-  /* ============================================================
-     RELOAD HELPERS — targeted refreshes after a single action, so
-     we don't have to re-fetch everything on every click.
-  ============================================================ */
+  
+   
   async function reloadOverview(){ STATE.stats = (await api('/api/admin/overview')).stats; renderStats(); }
   async function reloadVouchers(){ STATE.vouchers = (await api('/api/admin/vouchers')).vouchers; renderVouchers(); }
   async function reloadSessions(){ STATE.sessions = (await api('/api/admin/sessions')).sessions; renderSessions(); renderOnlineNow(); }
@@ -1559,7 +1530,6 @@
   }
 
   /* ============================================================
-     SIGN-IN FLOW — real auth against POST /api/admin/login
   ============================================================ */
   const MAX_TRIES = 3, LOCK_MINUTES = 15;
   let failedTries = 0, lockUntil = null, lockInterval = null;
