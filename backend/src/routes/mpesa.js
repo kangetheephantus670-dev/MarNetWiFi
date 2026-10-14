@@ -1,7 +1,4 @@
-// Talks to Safaricom's Daraja API to request an STK push (the M-Pesa PIN
-// prompt on the client's phone). The actual payment result doesn't come
-// back from this call — it arrives later at /api/mpesa/callback (or is
-// picked up by stkQuery below if that callback never arrives).
+
 const axios = require('axios');
 const config = require('../config');
 
@@ -25,7 +22,6 @@ async function getAccessToken() {
   );
 
   cachedToken = data.access_token;
-  // Refresh a minute early so a near-expiry token is never handed out.
   cachedTokenExpiry = Date.now() + (Number(data.expires_in || 3599) - 60) * 1000;
   return cachedToken;
 }
@@ -39,8 +35,7 @@ function timestamp() {
   );
 }
 
-// Accepts 07XXXXXXXX / 01XXXXXXXX / 2547XXXXXXXX / +2547XXXXXXXX and
-// normalizes to the 2547XXXXXXXX form Daraja expects.
+
 function normalizePhone(phone) {
   let v = String(phone).replace(/[^\d]/g, '');
   if (v.startsWith('0')) v = '254' + v.slice(1);
@@ -72,13 +67,10 @@ async function stkPush({ phone, amount, accountReference, description }) {
     { headers: { Authorization: 'Bearer ' + token }, timeout: 15000 }
   );
 
-  return data; // { MerchantRequestID, CheckoutRequestID, ResponseCode, ... }
+  return data; 
 }
 
-// Asks Daraja directly what happened to an STK push, instead of waiting
-// for the callback. Returns { done: false } while the customer is still
-// busy with the prompt, otherwise { done: true, resultCode, desc }
-// where resultCode 0 means paid.
+
 async function stkQuery(checkoutRequestId) {
   const token = await getAccessToken();
   const ts = timestamp();
@@ -102,18 +94,14 @@ async function stkQuery(checkoutRequestId) {
     }
     return { done: true, resultCode: Number(data.ResultCode), desc: data.ResultDesc };
   } catch (err) {
-    // Daraja answers HTTP 500 with this code while the transaction is
-    // still being processed — that just means "ask again later".
+    
     const d = err.response && err.response.data;
     if (d && d.errorCode === '500.001.1001') return { done: false };
     throw err;
   }
 }
 
-// One-time (or "run again if it ever needs re-pointing") call that tells
-// Safaricom where to send C2B payment notifications for this shortcode —
-// i.e. every payment made directly to the Till, outside the app. Backs
-// the admin console's Settings -> "Register M-Pesa C2B URL" button.
+
 async function registerC2BUrl() {
   if (!config.mpesa.c2bConfirmationUrl || !config.mpesa.c2bValidationUrl) {
     throw new Error('MPESA_C2B_CONFIRMATION_URL / MPESA_C2B_VALIDATION_URL are not set');
