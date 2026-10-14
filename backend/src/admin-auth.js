@@ -1,12 +1,3 @@
-// admin-auth.js — server-side admin authentication for MarNet WiFi (Express)
-//
-// Install:  npm i express helmet cors express-rate-limit jsonwebtoken bcryptjs
-//
-// Environment variables (set in Render > Environment, never in the repo):
-//   ADMIN_USER        e.g. "mark"
-//   ADMIN_PASS_HASH   bcrypt hash (generate with: node make-hash.js "your long passphrase")
-//   JWT_SECRET        64+ random chars (node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")
-//   ADMIN_ORIGIN      e.g. "https://kangetheephantus670-dev.github.io"  (origin only, no path)
 
 const express = require("express");
 const helmet = require("helmet");
@@ -24,8 +15,7 @@ const TOKEN_TTL = "30m";        // short-lived session
 const MAX_FAILS = 3;            // failed sign-ins before lockout
 const LOCK_MS = 15 * 60 * 1000; // 15 minutes
 
-// --- lockout state (in memory; move to Supabase/Redis if you run >1 instance) ---
-const fails = new Map(); // key: ip -> { count, lockedUntil }
+const fails = new Map();
 
 function lockInfo(ip) {
   const rec = fails.get(ip);
@@ -47,12 +37,10 @@ function recordFail(ip) {
   fails.set(ip, rec);
 }
 
-// --- audit log: replace body with an insert into your Supabase `logs` table ---
 async function audit(event, actor, detail) {
   console.log(JSON.stringify({ t: new Date().toISOString(), event, actor, detail }));
 }
 
-// --- middleware: protects every /admin/* route except login ---
 function requireAdmin(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
@@ -146,8 +134,3 @@ router.post("/devices/:mac/block", requireAdmin, async (req, res) => {
 
 module.exports = { router, requireAdmin };
 
-// ---- Wire it up in your main server file ----
-//   const app = express();
-//   app.set("trust proxy", 1);
-//   const { router: adminRouter } = require("./admin-auth");
-//   app.use("/admin", adminRouter);
