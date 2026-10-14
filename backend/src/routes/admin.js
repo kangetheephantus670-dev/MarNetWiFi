@@ -1,6 +1,4 @@
-// Everything here (except /login) requires a valid admin token — see
-// middleware/auth.js. This is what marnet-admin.html should eventually
-// call instead of its current local mock data.
+
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -14,9 +12,7 @@ const { randomCode } = require('../utils/codes');
 
 const router = express.Router();
 
-// 3 attempts per 15 minutes per IP — matches the admin console's own
-// stated "lock after 3 failed sign-ins" policy, enforced server-side
-// where it actually can't be bypassed.
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 3,
@@ -153,9 +149,7 @@ router.patch('/vouchers/:code', requireAdmin, async (req, res, next) => {
 
 router.get('/sessions', requireAdmin, async (req, res, next) => {
   try {
-    // phone/customer_name are selected directly off sessions (denormalized
-    // at creation time) so the console can show who a device belongs to
-    // without an extra join.
+    
     const { data, error } = await supabase
       .from('sessions')
       .select('*, plans(duration)')
@@ -168,10 +162,7 @@ router.get('/sessions', requireAdmin, async (req, res, next) => {
   }
 });
 
-// Backs "Admin can see daily usage of a particular client" — every
-// session for this MAC that started today, plus the total across them.
-// data_used_mb on each row is kept current by the background usage-sync
-// job (services/usage.js), which polls MikroTik directly.
+
 router.get('/usage/:mac', requireAdmin, async (req, res, next) => {
   try {
     const mac = req.params.mac.toUpperCase();
@@ -196,8 +187,7 @@ router.get('/usage/:mac', requireAdmin, async (req, res, next) => {
 router.post('/sessions/:mac/disconnect', requireAdmin, async (req, res, next) => {
   try {
     const mac = String(req.params.mac).toUpperCase();
-    // Kick the device off the router only. The plan and its remaining time
-    // stay valid, so the customer can tap "Connect" on the portal to come back.
+  
     await mikrotik.removeUser(mac).catch(() => {});
     await supabase.from('devices').update({ status: 'offline' }).eq('mac', mac);
     await supabase.from('logs').insert({
@@ -211,9 +201,7 @@ router.post('/sessions/:mac/disconnect', requireAdmin, async (req, res, next) =>
   }
 });
 
-// "End plan": kick the device off AND cancel what's left of its package, so
-// the portal's Connect button / pasted code now say it has expired. Unlike
-// /disconnect above, which keeps the plan so the customer can come back.
+
 router.post('/sessions/:mac/expire', requireAdmin, async (req, res, next) => {
   try {
     const mac = String(req.params.mac).toUpperCase();
@@ -236,8 +224,7 @@ router.post('/sessions/:mac/expire', requireAdmin, async (req, res, next) => {
   }
 });
 
-// "Grant time": give a device access for a chosen period at a chosen speed,
-// without a payment. Replaces any session the device currently has.
+
 router.post('/sessions/:mac/grant', requireAdmin, async (req, res, next) => {
   try {
     const mac = String(req.params.mac).toUpperCase();
@@ -311,9 +298,7 @@ router.get('/payments', requireAdmin, async (req, res, next) => {
   }
 });
 
-// Raw C2B confirmations — the "client paid the Till directly, no STK
-// push involved" flow. Separate from /payments (which is STK-only) since
-// they're two different payment rails.
+
 router.get('/mpesa-receipts', requireAdmin, async (req, res, next) => {
   try {
     const { data, error } = await supabase
@@ -328,8 +313,6 @@ router.get('/mpesa-receipts', requireAdmin, async (req, res, next) => {
   }
 });
 
-// 7-day revenue trend for the Overview chart, combining both payment
-// rails (STK-confirmed payments + C2B receipts) by calendar day.
 router.get('/analytics/revenue7d', requireAdmin, async (req, res, next) => {
   try {
     const since = new Date();
@@ -457,7 +440,7 @@ router.patch('/plans/:id', requireAdmin, async (req, res, next) => {
   }
 });
 
-// Backs the Settings -> MikroTik "Test connection" button.
+
 router.post('/test-mikrotik', requireAdmin, async (req, res) => {
   try {
     const identity = await mikrotik.testConnection(req.body || {});
@@ -467,9 +450,7 @@ router.post('/test-mikrotik', requireAdmin, async (req, res) => {
   }
 });
 
-// Backs the Settings -> M-Pesa "Register C2B URL" button — the one-time
-// call that tells Safaricom where to send Till payment notifications.
-// See README section 3b for the Daraja-side prerequisites.
+
 router.post('/mpesa/register-c2b', requireAdmin, async (req, res) => {
   try {
     const result = await mpesa.registerC2BUrl();
