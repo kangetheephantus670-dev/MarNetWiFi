@@ -345,8 +345,6 @@
       <button id="suSubmit" class="btn btn-solid" style="width:100%; justify-content:center; padding:12px;">Sign in</button>
     </div>
 
-   
-
     <a class="back-link" href="https://marnetwifi.github.io/login/index.html" id="backToPortal">← Back to captive portal</a>
   </div>
 </div>
@@ -663,12 +661,12 @@
           <h2>Operator account</h2>
           <p class="desc">Update the credentials used to sign in to this console.</p>
           <div class="form-grid">
-            <div class="field"><label>Username</label><input type="text" value="operator"></div>
-            <div class="field"><label>New password</label><input type="password" placeholder="Leave blank to keep current"></div>
+            <div class="field"><label>Username</label><input id="acctUsername" type="text" value="operator" disabled></div>
+            <div class="field"><label>New password</label><input id="acctNewPassword" type="password" placeholder="Leave blank to keep current"></div>
           </div>
           <div class="foot-row">
-            <span class="status-line">Last sign-in: just now</span>
-            <button class="btn btn-solid btn-sm">Save changes</button>
+            <span class="status-line" id="acctStatus">Last sign-in: just now</span>
+            <button class="btn btn-solid btn-sm" id="acctSaveBtn">Save changes</button>
           </div>
         </div>
 
@@ -728,6 +726,32 @@
 <script>
 (function(){
   "use strict";
+
+  /* ============================================================
+     API CLIENT — real backend, used by sign-in / sign-out / account.
+     The rest of this file (vouchers, sessions, payments, etc.) still
+     runs on placeholder data below; only auth talks to the real API.
+  ============================================================ */
+  const API_BASE = "https://marnetwifi.onrender.com";
+  function getToken(){ return sessionStorage.getItem('marnetAdminToken') || ''; }
+  function setToken(t){ if(t) sessionStorage.setItem('marnetAdminToken', t); else sessionStorage.removeItem('marnetAdminToken'); }
+
+  function api(path, opts){
+    opts = opts || {};
+    const headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
+    const token = getToken();
+    if(token) headers.Authorization = 'Bearer ' + token;
+    return fetch(API_BASE + path, Object.assign({}, opts, {headers}))
+      .then(function(res){
+        return res.json().catch(function(){ return {}; }).then(function(body){
+          if(!res.ok) throw new Error(body.error || 'Unknown error. Please try again.');
+          return body;
+        });
+      });
+  }
+  function apiPost(path, data){ return api(path, {method:'POST', body: JSON.stringify(data || {})}); }
+  function apiPatch(path, data){ return api(path, {method:'PATCH', body: JSON.stringify(data || {})}); }
+  function apiGet(path){ return api(path, {method:'GET'}); }
 
   /* ============================================================
      PLACEHOLDER DATA
@@ -1206,9 +1230,11 @@
   });
 
   /* ============================================================
-     SIGN-IN FLOW (placeholder — replace with real auth)
+     SIGN-IN FLOW — real backend auth (POST /api/admin/login).
+     The 3-failed-tries lock is still shown client-side for instant
+     feedback, but the backend enforces the same limit itself (429
+     after 3 tries / 15 min per IP), so a reload can't bypass it.
   ============================================================ */
-  const DEMO_USER = 'operator', DEMO_PASS = 'MarNet742';
   const MAX_TRIES = 3, LOCK_MINUTES = 15;
   let failedTries = 0, lockUntil = null, lockInterval = null;
 
@@ -1218,6 +1244,11 @@
   const suLockBox = document.getElementById('suLockBox');
   const suSubmit = document.getElementById('suSubmit');
   const suLockTimer = document.getElementById('suLockTimer');
+  const footUser = document.getElementById('footUser');
+  const acctUsername = document.getElementById('acctUsername');
+  const acctNewPassword = document.getElementById('acctNewPassword');
+  const acctStatus = document.getElementById('acctStatus');
+  const acctSaveBtn = document.getElementById('acctSaveBtn');
 
   document.getElementById('suEye').addEventListener('click', () => {
     suPass.type = suPass.type === 'password' ? 'text' : 'password';
@@ -1228,8 +1259,8 @@
     const m = Math.floor(total/60), s = total%60;
     return m + ':' + String(s).padStart(2,'0');
   }
-  function startLock(){
-    lockUntil = Date.now() + LOCK_MINUTES*60*1000;
+  function startLock(minutes){
+    lockUntil = Date.now() + (minutes || LOCK_MINUTES)*60*1000;
     suSubmit.disabled = true;
     suLockBox.style.display = 'flex';
     suMsg.style.display = 'block';
@@ -1246,36 +1277,119 @@
         suLockTimer.textContent = fmtMMSS(remain);
       }
     }, 250);
-    suLockTimer.textContent = fmtMMSS(LOCK_MINUTES*60*1000);
+    suLockTimer.textContent = fmtMMSS((minutes || LOCK_MINUTES)*60*1000);
   }
+
+  function showApp(username){
+    failedTries = 0;
+    footUser.textContent = username;
+    if(acctUsername) acctUsername.value = username;
+    if(acctStatus) acctStatus.textContent = 'Last sign-in: just now';
+    document.getElementById('signinView').style.display = 'none';
+    document.getElementById('appView').style.display = 'flex';
+    startIdleWatch();
+  }
+
+  /* ---------------- auto sign-out after 1 minute of inactivity ---------------- */
+  const IDLE_LIMIT_MS = 60 * 1000;
+  let idleTimer = null;
+  function resetIdleTimer(){
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){
+      signOut();
+      suMsg.style.display = 'block';
+      suMsg.textContent = 'Signed out after 1 minute of inactivity.';
+    }, IDLE_LIMIT_MS);
+  }
+  function startIdleWatch(){
+    resetIdleTimer();
+  }
+  function stopIdleWatch(){
+    clearTimeout(idleTimer);
+  }
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'].forEach(function(evt){
+    document.addEventListener(evt, function(){
+      // Only matters while signed in — appView is the visible one then.
+      if(document.getElementById('appView').style.display !== 'none') resetIdleTimer();
+    }, {passive: true});
+  });
 
   suSubmit.addEventListener('click', () => {
     if(lockUntil && Date.now() < lockUntil) return;
-    // TODO: replace with a real auth call, e.g. supabase.auth.signInWithPassword(...)
-    const ok = suUser.value.trim() === DEMO_USER && suPass.value === DEMO_PASS;
-    if(ok){
-      failedTries = 0;
-      document.getElementById('footUser').textContent = suUser.value.trim() || DEMO_USER;
-      document.getElementById('signinView').style.display = 'none';
-      document.getElementById('appView').style.display = 'flex';
-    } else {
-      failedTries++;
-      if(failedTries >= MAX_TRIES){
-        startLock();
-      } else {
-        suMsg.style.display = 'block';
-        suMsg.textContent = 'Incorrect username or password. ' + (MAX_TRIES - failedTries) + ' attempt' + (MAX_TRIES-failedTries===1?'':'s') + ' left.';
-      }
+    const username = suUser.value.trim();
+    const password = suPass.value;
+    if(!username || !password){
+      suMsg.style.display = 'block';
+      suMsg.textContent = 'Enter a username and password.';
+      return;
     }
+    suSubmit.disabled = true;
+    apiPost('/api/admin/login', {username, password})
+      .then(function(data){
+        suSubmit.disabled = false;
+        setToken(data.token);
+        showApp(data.username || username);
+      })
+      .catch(function(err){
+        suSubmit.disabled = false;
+        failedTries++;
+        if(/too many attempts/i.test(err.message)){
+          startLock(15);
+          suMsg.textContent = err.message;
+        } else if(failedTries >= MAX_TRIES){
+          startLock();
+        } else {
+          suMsg.style.display = 'block';
+          suMsg.textContent = err.message || 'Incorrect username or password.';
+        }
+      });
   });
   [suUser, suPass].forEach(i => i.addEventListener('keydown', e => { if(e.key === 'Enter') suSubmit.click(); }));
 
-  document.getElementById('signOutBtn').addEventListener('click', () => {
+  function signOut(){
+    stopIdleWatch();
+    setToken('');
     document.getElementById('appView').style.display = 'none';
     document.getElementById('signinView').style.display = 'flex';
     suUser.value = ''; suPass.value = '';
-  });
+  }
+  document.getElementById('signOutBtn').addEventListener('click', signOut);
   // Real navigation to the live portal — no preventDefault, no placeholder toast.
+
+  /* ---------------- operator account: real password change ---------------- */
+  if(acctSaveBtn){
+    acctSaveBtn.addEventListener('click', function(){
+      const newPassword = acctNewPassword.value;
+      if(!newPassword){
+        acctStatus.textContent = 'Enter a new password to change it.';
+        return;
+      }
+      if(newPassword.length < 6){
+        acctStatus.textContent = 'Password must be at least 6 characters.';
+        return;
+      }
+      acctSaveBtn.disabled = true;
+      acctStatus.textContent = 'Saving…';
+      apiPatch('/api/admin/account', {newPassword})
+        .then(function(){
+          acctNewPassword.value = '';
+          acctStatus.textContent = 'Password updated.';
+        })
+        .catch(function(err){
+          acctStatus.textContent = err.message || 'Unknown error. Please try again.';
+        })
+        .finally(function(){ acctSaveBtn.disabled = false; });
+    });
+  }
+
+  /* ---------------- restore session on reload, if token still valid ---------------- */
+  (function restoreSession(){
+    const token = getToken();
+    if(!token) return;
+    apiGet('/api/admin/me')
+      .then(function(data){ showApp(data.username); })
+      .catch(function(){ setToken(''); });
+  })();
 
   /* ---------------- initial render ---------------- */
   renderStats();
