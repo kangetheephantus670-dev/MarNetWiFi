@@ -13,9 +13,7 @@ const payments = require('./services/payments');
 
 const app = express();
 
-// Render sits behind a proxy. Without this, every visitor looks like the
-// same IP to express-rate-limit, so the login and STK-push limits get
-// shared by ALL customers (and it logs the ERR_ERL_UNEXPECTED_X_FORWARDED_FOR error).
+
 app.set('trust proxy', 1);
 
 app.use(helmet({
@@ -28,7 +26,7 @@ app.use(cors({
 
 app.get('/', (req, res) => res.send('MarNet backend is running'));
 
-// Router polls this every ~10s. One job per line, or "OK" when empty.
+
 const MAC_RE = /^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/;
 const SAFE_RE = /^[A-Za-z0-9]+$/;
 app.get('/api/router/poll', async (req, res) => {
@@ -63,8 +61,7 @@ app.get('/api/router/poll', async (req, res) => {
   }
 });
 
-// The router reports how many bytes each device has used (once a minute).
-// Body: one "MAC,bytes" line per hotspot user.
+
 app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), async (req, res) => {
   if (!config.routerPollKey || req.query.key !== config.routerPollKey) {
     return res.status(401).type('text/plain').send('unauthorized\n');
@@ -93,8 +90,7 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
   }
 });
 
-// Log every call Safaricom makes to us, so the Render logs show whether a
-// payment callback actually arrived (and what it contained).
+
 app.use(['/api/mpesa', '/api/pay'], (req, res, next) => {
   console.log('[marnet] safaricom hit', req.method, req.originalUrl, JSON.stringify(req.body || {}).slice(0, 400));
   next();
@@ -103,14 +99,12 @@ app.use(['/api/mpesa', '/api/pay'], (req, res, next) => {
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mpesa', mpesaWebhook);
-// Same handlers under a neutral address: Daraja can reject callback URLs
-// that contain the word "mpesa", so payments are confirmed via /api/pay.
+
 app.use('/api/pay', mpesaWebhook);
 
 setInterval(() => expiry.sweep().catch(console.error), 60000);
 
-// Every 20s, ask Safaricom about payments still pending and settle them,
-// so a missed callback no longer leaves a customer stuck.
+
 setInterval(() => payments.sweepPending().catch(console.error), 20000);
 
 app.use(notFound);
