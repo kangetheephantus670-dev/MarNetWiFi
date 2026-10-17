@@ -70,23 +70,44 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
       const parts = line.trim().split(',');
       const mac = (parts[0] || '').toUpperCase();
       const n = parseInt(parts[1], 10);
-      if (!MAC_RE.test(mac) || !n || n < 0) return;
+      if (!MAC_RE.test(mac) || Number.isNaN(n) || n < 0) return;
       totals[mac] = (totals[mac] || 0) + n;
     });
 
     const now = new Date().toISOString();
 
     for (const mac of Object.keys(totals)) {
-      const mb = Math.round(totals[mac] / 1048576);
+      const reportedBytes = totals[mac];
 
-      // Update data used on the active session
-      await supabase
+      // Get active session + current totals
+      const { data: session } = await supabase
         .from('sessions')
-        .update({ data_used_mb: mb })
+        .select('id, data_used_mb, last_bytes')
         .eq('mac', mac)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      // Refresh last_seen + mark device online (this was missing)
+      if (session) {
+        const prevBytes = session.last_bytes || 0;
+        let delta = reportedBytes - prevBytes;
+
+        // Counter reset on MikroTik (reconnect / new hotspot entry)
+        if (delta < 0) delta = reportedBytes;
+
+        const newUsedMb = (session.data_used_mb || 0) + Math.round(delta / 1048576);
+
+        await supabase
+          .from('sessions')
+          .update({
+            data_used_mb: newUsedMb,
+            last_bytes: reportedBytes,
+          })
+          .eq('id', session.id);
+      }
+
+      // Refresh last_seen + mark online
       await supabase
         .from('devices')
         .upsert({
