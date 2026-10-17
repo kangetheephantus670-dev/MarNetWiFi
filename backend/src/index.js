@@ -13,7 +13,6 @@ const payments = require('./services/payments');
 
 const app = express();
 
-
 app.set('trust proxy', 1);
 
 app.use(helmet({
@@ -26,9 +25,9 @@ app.use(cors({
 
 app.get('/', (req, res) => res.send('MarNet backend is running'));
 
-
 const MAC_RE = /^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/;
 const SAFE_RE = /^[A-Za-z0-9]+$/;
+
 app.get('/api/router/poll', async (req, res) => {
   if (!config.routerPollKey || req.query.key !== config.routerPollKey) {
     return res.status(401).type('text/plain').send('unauthorized\n');
@@ -61,7 +60,6 @@ app.get('/api/router/poll', async (req, res) => {
   }
 });
 
-
 app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), async (req, res) => {
   if (!config.routerPollKey || req.query.key !== config.routerPollKey) {
     return res.status(401).type('text/plain').send('unauthorized\n');
@@ -75,13 +73,27 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
       if (!MAC_RE.test(mac) || !n || n < 0) return;
       totals[mac] = (totals[mac] || 0) + n;
     });
+
+    const now = new Date().toISOString();
+
     for (const mac of Object.keys(totals)) {
       const mb = Math.round(totals[mac] / 1048576);
+
+      // Update data used on the active session
       await supabase
         .from('sessions')
         .update({ data_used_mb: mb })
         .eq('mac', mac)
         .eq('status', 'active');
+
+      // Refresh last_seen + mark device online (this was missing)
+      await supabase
+        .from('devices')
+        .upsert({
+          mac,
+          status: 'online',
+          last_seen: now,
+        });
     }
     res.type('text/plain').send('OK\n');
   } catch (err) {
@@ -89,7 +101,6 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
     res.status(500).type('text/plain').send('error\n');
   }
 });
-
 
 app.use(['/api/mpesa', '/api/pay'], (req, res, next) => {
   console.log('[marnet] safaricom hit', req.method, req.originalUrl, JSON.stringify(req.body || {}).slice(0, 400));
@@ -99,12 +110,9 @@ app.use(['/api/mpesa', '/api/pay'], (req, res, next) => {
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mpesa', mpesaWebhook);
-
 app.use('/api/pay', mpesaWebhook);
 
 setInterval(() => expiry.sweep().catch(console.error), 60000);
-
-
 setInterval(() => payments.sweepPending().catch(console.error), 20000);
 
 app.use(notFound);
