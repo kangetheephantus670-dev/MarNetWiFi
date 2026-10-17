@@ -22,7 +22,7 @@ function getMac(req) {
   return mac ? String(mac).toUpperCase() : null;
 }
 
-// The router polls for jobs every ~10s. Wait until it has picked up this
+// The router polls for jobs every \~10s. Wait until it has picked up this
 // device's "add user" job, then give it a moment to apply it, so the portal
 // only says "connected" once the router really knows the user.
 async function waitForRouter(mac, maxMs = 20000) {
@@ -188,6 +188,13 @@ router.post('/reconnect', async (req, res, next) => {
     }).catch(() => {});
     await waitForRouter(mac);
 
+    // Refresh last_seen + mark device online
+    await supabase.from('devices').upsert({
+      mac,
+      status: 'online',
+      last_seen: new Date().toISOString(),
+    });
+
     res.json({ ok: true, hotspotUsername: username, hotspotPassword: password });
   } catch (err) {
     next(err);
@@ -209,7 +216,7 @@ function toRedeemResponse(result) {
     case 'expired':
       return { ok: false, expired: true, message: "That code has expired." };
     case 'wrong_device':
-      return { ok: false, message: 'That code is already in use on another device.' };
+      return { ok: false, message: "That code is already in use on another device." };
     case 'no_matching_plan':
       return { ok: false, message: "We couldn't match that payment to a package. Please contact us." };
     case 'blocked':
