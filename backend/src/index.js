@@ -79,39 +79,47 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
     for (const mac of Object.keys(totals)) {
       const reportedBytes = totals[mac];
 
-      const { data: session } = await supabase
+      const { data: rows, error: sessErr } = await supabase
         .from('sessions')
         .select('id, data_used_mb, last_bytes')
         .eq('mac', mac)
         .eq('status', 'active')
         .order('expires_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+
+      if (sessErr) {
+        console.error('[usage] session query', mac, sessErr);
+      }
+
+      const session = rows && rows[0];
 
       if (session) {
         const prevBytes = Number(session.last_bytes) || 0;
         let delta = reportedBytes - prevBytes;
-        if (delta < 0) delta = reportedBytes; // hotspot counter reset
+        if (delta < 0) delta = reportedBytes;
 
         const prevMb = Number(session.data_used_mb) || 0;
         const newUsedMb = Math.round((prevMb * 1048576 + delta) / 1048576 * 100) / 100;
 
-        await supabase
+        const { error: updErr } = await supabase
           .from('sessions')
           .update({
             data_used_mb: newUsedMb,
             last_bytes: reportedBytes,
           })
           .eq('id', session.id);
+
+        if (updErr) console.error('[usage] session update', mac, updErr);
+        else console.log('[usage] updated', mac, reportedBytes, newUsedMb);
+      } else {
+        console.log('[usage] no active session for', mac);
       }
 
-      await supabase
-        .from('devices')
-        .upsert({
-          mac,
-          status: 'online',
-          last_seen: now,
-        });
+      await supabase.from('devices').upsert({
+        mac,
+        status: 'online',
+        last_seen: now,
+      });
     }
     res.type('text/plain').send('OK\n');
   } catch (err) {
