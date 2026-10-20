@@ -100,7 +100,7 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
         // Handle router byte counter resets safely
         if (deltaBytes < 0) deltaBytes = reportedBytes;
 
-        // Convert the byte difference directly to MB to avoid precision loss
+        // Convert byte difference directly to MB to avoid precision loss
         const deltaMb = deltaBytes / 1048576;
         const prevMb = Number(session.data_used_mb) || 0;
         const newUsedMb = Math.round((prevMb + deltaMb) * 100) / 100;
