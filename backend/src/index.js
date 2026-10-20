@@ -69,7 +69,7 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
     String(req.body || '').split('\n').forEach((line) => {
       const parts = line.trim().split(',');
       
-      // FIXED HERE: Added [0] and [1] to extract array items properly
+      // FIXED: Added array bracket indexes to extract pieces out of string
       const mac = (parts[0] || '').toUpperCase();
       const n = parseInt(parts[1], 10);
       
@@ -94,6 +94,7 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
         console.error('[usage] session query', mac, sessErr);
       }
 
+      // FIXED: Correctly grab first item out of database query arrays
       const session = rows && rows[0];
 
       if (session) {
