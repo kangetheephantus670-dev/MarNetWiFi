@@ -152,6 +152,7 @@ app.listen(config.port, () => {
   console.log('MarNet backend listening on port ' + config.port);
 });
 
+// Active background sync manager looping out to poll the MikroTik Router
 if (config.mikrotik.host && config.usageSyncIntervalMs > 0) {
   setInterval(() => {
     usage.syncUsage().catch((err) => console.error('[marnet] usage sync failed', err));
