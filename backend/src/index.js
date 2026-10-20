@@ -95,11 +95,15 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
 
       if (session) {
         const prevBytes = Number(session.last_bytes) || 0;
-        let delta = reportedBytes - prevBytes;
-        if (delta < 0) delta = reportedBytes;
+        let deltaBytes = reportedBytes - prevBytes;
+        
+        // Handle router byte counter resets safely
+        if (deltaBytes < 0) deltaBytes = reportedBytes;
 
+        // Convert the byte difference directly to MB to avoid precision loss
+        const deltaMb = deltaBytes / 1048576;
         const prevMb = Number(session.data_used_mb) || 0;
-        const newUsedMb = Math.round((prevMb * 1048576 + delta) / 1048576 * 100) / 100;
+        const newUsedMb = Math.round((prevMb + deltaMb) * 100) / 100;
 
         const { error: updErr } = await supabase
           .from('sessions')
