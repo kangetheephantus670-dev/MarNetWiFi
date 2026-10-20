@@ -93,7 +93,6 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
         let delta = reportedBytes - prevBytes;
         if (delta < 0) delta = reportedBytes; // hotspot counter reset
 
-        // Keep fractional MB so small traffic still updates
         const prevMb = Number(session.data_used_mb) || 0;
         const newUsedMb = Math.round((prevMb * 1048576 + delta) / 1048576 * 100) / 100;
 
