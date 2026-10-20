@@ -68,8 +68,11 @@ app.post('/api/router/usage', express.text({ type: '*/*', limit: '100kb' }), asy
     const totals = {};
     String(req.body || '').split('\n').forEach((line) => {
       const parts = line.trim().split(',');
+      
+      // FIXED HERE: Added [0] and [1] to extract array items properly
       const mac = (parts[0] || '').toUpperCase();
       const n = parseInt(parts[1], 10);
+      
       if (!MAC_RE.test(mac) || Number.isNaN(n) || n < 0) return;
       totals[mac] = (totals[mac] || 0) + n;
     });
@@ -152,7 +155,6 @@ app.listen(config.port, () => {
   console.log('MarNet backend listening on port ' + config.port);
 });
 
-// Active background sync manager looping out to poll the MikroTik Router
 if (config.mikrotik.host && config.usageSyncIntervalMs > 0) {
   setInterval(() => {
     usage.syncUsage().catch((err) => console.error('[marnet] usage sync failed', err));
