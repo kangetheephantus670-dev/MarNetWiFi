@@ -5,7 +5,7 @@ const supabase = require('../supabaseClient');
 const mikrotik = require('./mikrotik');
 const mpesa = require('./mpesa');
 const { randomCode } = require('../utils/codes');
-const DURATION_MS = require('../utils/durations');
+const { durationToMs } = require('../utils/durations');
 
 // Marks a payment confirmed and provisions the customer. Safe to call twice
 // (callback + sweep racing): only the first call to claim the row does the work.
@@ -48,7 +48,11 @@ async function confirmPayment(payment, receipt) {
       console.error('[marnet] provisionUser failed for', mac, err);
     }
 
-    const ms = plan && DURATION_MS[plan.duration] ? DURATION_MS[plan.duration] : 60 * 60 * 1000;
+    const minutes = Number.isFinite(plan && plan.duration_minutes)
+      ? Number(plan.duration_minutes)
+      : durationMinutesFromLabel(plan && plan.duration);
+    const ms = minutes != null ? minutes * 60 * 1000 : 60 * 60 * 1000;
+
     await supabase.from('sessions').insert({
       mac,
       plan_id: payment.plan_id,

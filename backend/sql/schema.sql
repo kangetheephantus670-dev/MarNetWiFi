@@ -11,6 +11,7 @@ create extension if not exists "pgcrypto";
 create table if not exists plans (
   id text primary key,
   duration text not null,
+  duration_minutes integer not null default 60,
   price integer not null,
   popular boolean not null default false,
   devices_allowed integer not null default 1,
@@ -113,21 +114,27 @@ create index if not exists idx_devices_status on devices(status);
 create index if not exists idx_mpesa_receipts_used on mpesa_receipts(used);
 create index if not exists idx_sessions_started on sessions(started_at);
 
--- Seed the plans to match marnet-portal.html / marnet-admin.html as they
--- stand today. Every plan is capped at the same 3 Mbps by policy — edit
--- prices/durations here later, or from the admin console's Plans tab.
-insert into plans (id, duration, price, popular, devices_allowed, speed_mbps) values
-  ('p30m',   '30 min',  5,   false, 1, 3),
-  ('p1h',    '1 hr',    8,   false, 1, 3),
-  ('p3h',    '3 hrs',   10,  false, 1, 3),
-  ('p12h',   '12 hrs',  20,  true,  1, 3),
-  ('p24h',   '24 hrs',  25,  true,  1, 3),
-  ('p3d',    '3 days',  55,  false, 1, 3),
-  ('p1w',    '1 week',  135, false, 1, 3),
-  ('p2w',    '2 weeks', 270, false, 1, 3),
-  ('p1mo',   '1 month', 579, false, 1, 3),
-  ('p1mo2d', '1 month', 900, false, 2, 3)
-on conflict (id) do nothing;
+-- Seed the plans to match the live portal and keep duration as a real numeric
+-- value so the system never silently falls back to 1 hour.
+insert into plans (id, duration, duration_minutes, price, popular, devices_allowed, speed_mbps) values
+  ('p30m',   '30 min',  30,   5,   false, 1, 3),
+  ('p1h',    '1 hr',    60,   8,   false, 1, 3),
+  ('p3h',    '3 hrs',   180,  10,  false, 1, 3),
+  ('p5h',    '5 hrs',   300,  15,  false, 1, 3),
+  ('p12h',   '12 hrs',  720,  20,  true,  1, 3),
+  ('p24h',   '24 hrs',  1440, 25,  true,  1, 3),
+  ('p3d',    '3 days',  4320, 55,  false, 1, 3),
+  ('p1w',    '1 week',  10080,135,false,1,3),
+  ('p2w',    '2 weeks',20160,270,false,1,3),
+  ('p1mo',   '1 month',43200,579,false,1,3),
+  ('p1mo2d', '1 month',43200,900,false,2,3)
+on conflict (id) do update set
+  duration = excluded.duration,
+  duration_minutes = excluded.duration_minutes,
+  price = excluded.price,
+  popular = excluded.popular,
+  devices_allowed = excluded.devices_allowed,
+  speed_mbps = excluded.speed_mbps;
 
 -- Seed one operator account so you can sign in to the admin console.
 -- Username: operator   Password: MarNet742
