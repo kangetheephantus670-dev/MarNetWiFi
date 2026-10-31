@@ -5,7 +5,7 @@ const supabase = require('../supabaseClient');
 const mikrotik = require('./mikrotik');
 const mpesa = require('./mpesa');
 const { randomCode } = require('../utils/codes');
-const { durationToMs } = require('../utils/durations');
+const { durationMinutesFromLabel } = require('../utils/durations');
 
 // Marks a payment confirmed and provisions the customer. Safe to call twice
 // (callback + sweep racing): only the first call to claim the row does the work.
@@ -43,8 +43,6 @@ async function confirmPayment(payment, receipt) {
         rateLimitMbps: plan ? plan.speed_mbps : undefined,
       });
     } catch (err) {
-      // Payment is already recorded; /reconnect re-queues the router user
-      // from the session below, so don't abandon the customer here.
       console.error('[marnet] provisionUser failed for', mac, err);
     }
 
@@ -95,9 +93,6 @@ async function failPayment(payment, reason) {
   return true;
 }
 
-// Asks Safaricom about payments still pending (older than 20s, younger
-// than 30 min) and settles them. Older ones are left alone on purpose:
-// confirming a payment hours late would start a fresh session now.
 let sweeping = false;
 async function sweepPending() {
   if (sweeping) return;
@@ -115,7 +110,7 @@ async function sweepPending() {
     for (const p of data || []) {
       try {
         const r = await mpesa.stkQuery(p.checkout_request_id);
-        if (!r.done) continue; // customer hasn't finished yet
+        if (!r.done) continue;
         if (r.resultCode === 0) {
           console.log('[marnet] sweep confirmed', p.checkout_request_id);
           await confirmPayment(p, null);

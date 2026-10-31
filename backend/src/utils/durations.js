@@ -1,6 +1,6 @@
 // Maps a plan's duration label to how long a session should last.
-// Prefer a numeric duration_minutes value when available; fall back to the
-// label parser so "5 hrs" and "5 hours" are normalized correctly.
+// Prefer a numeric duration_minutes value when available; fall back to label
+// parsing so "5 hrs" and "5 hours" are handled correctly.
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -54,7 +54,6 @@ function durationToMs(value) {
     if (minutes != null) return minutes * MINUTE;
   }
 
-  // Never silently turn an unknown duration into 1 hour.
   return 1 * HOUR;
 }
 
