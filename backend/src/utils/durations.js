@@ -1,18 +1,66 @@
 // Maps a plan's duration label to how long a session should last.
-// Keep these labels in sync with the "duration" column in the plans
-// table (and with what marnet-portal.html sends as activePlan.d).
+// Prefer a numeric duration_minutes value when available; fall back to label
+// parsing so "5 hrs" and "5 hours" are handled correctly.
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
+function durationMinutesFromLabel(value) {
+  if (!value || typeof value !== 'string') return null;
+
+  const s = value.trim().toLowerCase();
+  const match = s.match(/(\d+)\s*(minute|min|minutes|mins|hr|hrs|hour|hours|h|day|days|d|week|weeks|w|month|months|mo)/);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+
+  switch (unit) {
+    case 'min':
+    case 'minute':
+    case 'minutes':
+    case 'mins':
+      return amount;
+    case 'h':
+    case 'hr':
+    case 'hrs':
+    case 'hour':
+    case 'hours':
+      return amount * 60;
+    case 'd':
+    case 'day':
+    case 'days':
+      return amount * 24 * 60;
+    case 'w':
+    case 'week':
+    case 'weeks':
+      return amount * 7 * 24 * 60;
+    case 'mo':
+    case 'month':
+    case 'months':
+      return amount * 30 * 24 * 60;
+    default:
+      return null;
+  }
+}
+
+function durationToMs(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value * MINUTE;
+  }
+
+  if (typeof value === 'string') {
+    const minutes = durationMinutesFromLabel(value);
+    if (minutes != null) return minutes * MINUTE;
+  }
+
+  return 1 * HOUR;
+}
+
 module.exports = {
-  '30 min': 30 * MINUTE,
-  '1 hr': 1 * HOUR,
-  '3 hrs': 3 * HOUR,
-  '12 hrs': 12 * HOUR,
-  '24 hrs': 24 * HOUR,
-  '3 days': 3 * DAY,
-  '1 week': 7 * DAY,
-  '2 weeks': 14 * DAY,
-  '1 month': 30 * DAY,
+  durationToMs,
+  durationMinutesFromLabel,
+  MINUTE,
+  HOUR,
+  DAY,
 };

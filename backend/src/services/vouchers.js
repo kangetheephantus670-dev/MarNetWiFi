@@ -11,7 +11,7 @@ const supabase = require('../supabaseClient');
 const devices = require('./devices');
 const mikrotik = require('./mikrotik');
 const { randomCode } = require('../utils/codes');
-const DURATION_MS = require('../utils/durations');
+const { durationMinutesFromLabel } = require('../utils/durations');
 
 async function redeem(code, mac) {
   const { data: voucher } = await supabase
@@ -59,9 +59,11 @@ async function redeem(code, mac) {
     return { status: 'expired' };
   }
 
-  // status === 'unused' -> bind it to this device now.
   const plan = voucher.plans;
-  const ms = plan && DURATION_MS[plan.duration] ? DURATION_MS[plan.duration] : 60 * 60 * 1000;
+  const minutes = Number.isFinite(plan && plan.duration_minutes)
+    ? Number(plan.duration_minutes)
+    : durationMinutesFromLabel(plan && plan.duration);
+  const ms = minutes != null ? minutes * 60 * 1000 : 60 * 60 * 1000;
   const expiresAt = new Date(Date.now() + ms).toISOString();
   const password = randomCode('', 8);
   const username = mac.replace(/:/g, '');
